@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#2457e6"><title>كاشير CR7</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Cairo:wght@700;800&display=swap">
+<style>
+/* Layout: sticky top bar + tabs; device cards grid; modal invoice. Ink-navy ground, electric blue accent, green = running. */
+:root{
+  color-scheme:light;
+  --bg:#f3f5f9; --surface:#ffffff; --fg:#10192b; --muted:#5d6b84; --line:#dce2ee;
+  --accent:#2457e6; --accent-fg:#ffffff; --run:#0f8a4f; --run-bg:#e2f5eb; --warn:#a15c00; --warn-bg:#fff1d6; --danger:#c0322b; --soft:#e9eefb;
+  --f-display:'Cairo','IBM Plex Sans Arabic',system-ui,sans-serif; --f-body:'IBM Plex Sans Arabic','Segoe UI',Tahoma,system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0c1220; --surface:#141c30; --fg:#e8edf8; --muted:#97a4bf; --line:#26314b;
+  --accent:#6f95ff; --accent-fg:#0c1220; --run:#4cd18a; --run-bg:#10301f; --warn:#f2b552; --warn-bg:#3a2a0c; --danger:#ff8178; --soft:#1b2745; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0c1220; --surface:#141c30; --fg:#e8edf8; --muted:#97a4bf; --line:#26314b;
+  --accent:#6f95ff; --accent-fg:#0c1220; --run:#4cd18a; --run-bg:#10301f; --warn:#f2b552; --warn-bg:#3a2a0c; --danger:#ff8178; --soft:#1b2745; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 40px}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1040px;margin:0 auto}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 0 8px;flex-wrap:wrap}
+h1{font-family:var(--f-display);font-size:22px;margin:0;font-weight:800;text-wrap:balance}
+.clock{color:var(--muted);font-size:13px}
+nav{display:flex;gap:6px;overflow-x:auto;padding:8px 0 14px;position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);z-index:5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+nav button{border:1px solid var(--line);background:var(--surface);padding:8px 16px;border-radius:8px;font-weight:600;white-space:nowrap}
+nav button[aria-current="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card.on{border-color:var(--run);box-shadow:0 0 0 1px var(--run)}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.name{font-family:var(--f-display);font-weight:700;font-size:18px}
+.badge{font-size:12px;font-weight:600;padding:2px 10px;border-radius:99px;background:var(--soft);color:var(--muted)}
+.badge.on{background:var(--run-bg);color:var(--run)}
+.badge.d{background:var(--warn-bg);color:var(--warn)}
+.timer{font-family:var(--f-display);font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate;text-align:center;letter-spacing:1px}
+.sub{display:flex;justify-content:space-between;color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:8px;font-weight:600;flex:1;min-width:0}
+.btn.p{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn.g{background:var(--run);color:#fff;border-color:var(--run)}
+html[data-theme="dark"] .btn.g{color:#06210f}
+.btn.x{color:var(--danger);border-color:var(--danger)}
+.btn.s{padding:4px 10px;font-size:13px;flex:none}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--bg);padding:4px 10px;border-radius:99px;font-size:13px}
+.chip b{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:500}
+.items{display:flex;flex-direction:column;gap:4px;font-size:14px}
+.it{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.it .q{display:flex;gap:6px;align-items:center}
+.it button{border:1px solid var(--line);background:var(--surface);border-radius:6px;width:26px;height:26px;line-height:1;padding:0}
+.tbls{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px}
+.tbl{display:flex;flex-direction:column;gap:2px;align-items:flex-start;text-align:start;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 12px;min-width:0}
+.tbl span{font-weight:600}
+.tbl b{font-size:13px;font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
+.tbl.busy{background:var(--warn-bg)}
+.tbl.busy b{color:var(--warn);font-weight:700}
+.tbl[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+h2{font-family:var(--f-display);font-size:18px;margin:18px 0 10px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px}
+.stat span{display:block;color:var(--muted);font-size:13px}
+.stat strong{font-family:var(--f-display);font-size:22px;font-variant-numeric:tabular-nums}
+.stat.main{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.stat.main span{color:inherit;opacity:.85}
+table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{text-align:start;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:12px}
+.scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:4px 10px}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+textarea{font:inherit;color:inherit}
+input,select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0;width:100%}
+.form{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.form>*{flex:1;min-width:120px}
+.form .btn{flex:none}
+.note{color:var(--muted);font-size:13px}
+.overlay{position:fixed;inset:0;background:rgba(8,12,24,.6);display:flex;align-items:center;justify-content:center;z-index:20;
+  padding:16px max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.modal{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;width:100%;max-width:420px;max-height:100%;overflow:auto;display:flex;flex-direction:column;gap:12px}
+.bill td:last-child,.bill th:last-child{text-align:end}
+.total{display:flex;justify-content:space-between;font-family:var(--f-display);font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
+.empty{color:var(--muted);text-align:center;padding:22px 8px}
+.hd{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.banner{background:var(--warn-bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.banner.e{border-color:var(--danger)}
+@media (prefers-reduced-motion:no-preference){.card{transition:border-color .2s}}
+</style>
+</head><body>
+
+<div id="root" dir="rtl" lang="ar" class="wrap"></div>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {initializeFirestore,getFirestore,persistentLocalCache,persistentMultipleTabManager,doc,collection,setDoc,deleteDoc,onSnapshot} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+const firebaseConfig={
+  apiKey:"AIzaSyC7IGdB_b2_xbcca0abR7ZlCngJFeupqe4",
+  authDomain:"cr7-cafe-8b710.firebaseapp.com",
+  projectId:"cr7-cafe-8b710",
+  storageBucket:"cr7-cafe-8b710.firebasestorage.app",
+  messagingSenderId:"489528958799",
+  appId:"1:489528958799:web:92b4e10f6f8f9206d82f3a"
+};
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+let fs;
+try{fs=initializeFirestore(app,{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})});}catch(e){fs=getFirestore(app);}
+const KEY='cafe-ps-v1';
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>Math.round(n).toLocaleString('en-US')+' ج.م';
+const hms=ms=>{const s=Math.max(0,Math.floor(ms/1000));return [Math.floor(s/3600),Math.floor(s%3600/60),s%60].map(v=>String(v).padStart(2,'0')).join(':')};
+const dayKey=ts=>new Date(ts).toLocaleDateString('en-CA');
+const timeStr=ts=>new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+const uid=()=>Math.random().toString(36).slice(2,9);
+
+function defaults(){return{
+  devices:[1,2,3,4].map(i=>({id:'d'+i,name:'جهاز '+i})),
+  rateS:20,rateD:30,
+  menu:[['شاي',10],['قهوة تركي',20],['نسكافيه',25],['ينسون',10],['مياه',8],['بيبسي',15],['شيبسي',10],['إندومي',25]].map(([name,price],i)=>({id:'m'+i,name,price})),
+  tables:[1,2,3,4,5,6].map(i=>({id:'t'+i,name:'ترابيزة '+i})),orders:{},
+  active:{},sales:[],expenses:[],cart:[]};}
+let S=defaults();
+/* Storage: shared `db` documents when available (every device sees the same data), else this device's localStorage.
+   Collections: cfg/main, active/<device>, orders/<table>, sales/<id>, expenses/<id>.
+   save() diffs S against what the store holds and writes only what changed. */
+let dbx=null, mode='loading', canWrite=null, slow=false, lastErr=false, pendingN=0, pend=false, permErr=false;
+const COLS=['cfg','active','orders','sales','expenses'];
+const loaded={},fresh={},remote={};
+const MIGRATED='cafe-ps-migrated';
+const clone=v=>JSON.parse(JSON.stringify(v));
+const canon=v=>JSON.stringify(v,(k,x)=>x&&typeof x==='object'&&!Array.isArray(x)?Object.keys(x).sort().reduce((o,kk)=>{o[kk]=x[kk];return o;},{}):x);
+const cfgOf=o=>({rateS:o.rateS,rateD:o.rateD,devices:o.devices,tables:o.tables,menu:o.menu});
+function loadLocal(){try{const raw=localStorage.getItem(KEY);if(raw)S=Object.assign(defaults(),JSON.parse(raw));}catch(e){}}
+function legacy(){
+  try{
+    if(localStorage.getItem(MIGRATED))return null;
+    const raw=localStorage.getItem(KEY);if(!raw)return null;
+    const o=JSON.parse(raw);
+    const has=(o.sales&&o.sales.length)||(o.expenses&&o.expenses.length)||Object.keys(o.active||{}).length||canon(cfgOf(Object.assign(defaults(),o)))!==canon(cfgOf(defaults()));
+    return has?o:null;
+  }catch(e){return null;}
+}
+const ready=()=>mode==='local'||(mode==='db'&&COLS.every(k=>loaded[k]));
+function desired(){
+  const m={};
+  if(loaded.cfg)m['cfg/main']=cfgOf(S);
+  if(loaded.active)Object.entries(S.active).forEach(([id,se])=>{m['active/'+id]={segs:se.segs,items:se.items};});
+  if(loaded.orders){
+    Object.entries(S.orders).forEach(([id,l])=>{if(l&&l.length)m['orders/'+id]={items:l};});
+    if(S.cart.length)m['orders/cafe']={items:S.cart};
+  }
+  if(loaded.sales)S.sales.forEach(s=>{m['sales/'+s.id]={ts:s.ts,type:s.type,dev:s.dev,mins:s.mins,timeCost:s.timeCost,items:s.items};});
+  if(loaded.expenses)S.expenses.forEach(e=>{m['expenses/'+e.id]={ts:e.ts,name:e.name,amount:e.amount};});
+  return m;
+}
+let chain=Promise.resolve();
+function enqueue(p,op,body){
+  pendingN++;updStatus();
+  const b=body?clone(body):null;
+  chain=chain
+    .then(()=>op==='set'?dbx.doc(p).set(b):dbx.doc(p).delete())
+    .then(()=>{lastErr=false;},e=>{lastErr=true;if(e&&e.code==='permission-denied')permErr=true;remote[p]='?';})
+    .then(()=>{pendingN--;updStatus();if(lastErr)softRender();});
+}
+function syncOut(){
+  const want=desired();
+  Object.keys(want).forEach(p=>{const j=canon(want[p]);if(remote[p]!==j){remote[p]=j;enqueue(p,'set',want[p]);}});
+  Object.keys(remote).forEach(p=>{if(loaded[p.split('/')[0]]&&!(p in want)){delete remote[p];enqueue(p,'del');}});
+}
+function save(){
+  if(!dbx){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}return;}
+  syncOut();
+}
+function applyRemote(k,docs){
+  Object.keys(remote).forEach(p=>{if(p.split('/')[0]===k)delete remote[p];});
+  docs.forEach(d=>{remote[k+'/'+d.id]=canon(d.data());});
+  const data=d=>clone(d.data());
+  if(k==='cfg'){const d=docs.find(x=>x.id==='main');if(d){const o=data(d);['rateS','rateD','devices','tables','menu'].forEach(f=>{if(o[f]!==undefined)S[f]=o[f];});}}
+  else if(k==='active'){S.active={};docs.forEach(d=>{const o=data(d);if(o.segs&&o.segs.length)S.active[d.id]={segs:o.segs,items:o.items||[]};});}
+  else if(k==='orders'){S.orders={};S.cart=[];docs.forEach(d=>{const items=data(d).items||[];if(d.id==='cafe')S.cart=items;else S.orders[d.id]=items;});}
+  else if(k==='sales'){S.sales=docs.map(d=>Object.assign({id:d.id},data(d))).sort((a,b)=>a.ts-b.ts);}
+  else if(k==='expenses'){S.expenses=docs.map(d=>Object.assign({id:d.id},data(d))).sort((a,b)=>a.ts-b.ts);}
+}
+function bind(){
+  COLS.forEach(k=>{
+    dbx.collection(k).onSnapshot(q=>{
+      applyRemote(k,q.docs);loaded[k]=true;fresh[k]=!q.metadata.fromCache;updStatus();softRender();
+    },e=>{lastErr=true;if(e&&e.code==='permission-denied')permErr=true;softRender();});
+  });
+}
+function updStatus(){
+  const el=document.getElementById('status');if(!el)return;
+  let t,c='';
+  if(mode==='loading')t='بيتصل…';
+  else if(mode==='local')t='على الجهاز ده بس';
+  else if(pendingN>0)t='بيحفظ…';
+  else if(!COLS.every(k=>fresh[k]))t='بيتزامن…';
+  else{t='متزامن بين الأجهزة';c='on';}
+  el.textContent=t;el.className='badge '+c;
+}
+function softRender(){
+  const a=document.activeElement;
+  if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&document.getElementById('root').contains(a)){pend=true;return;}
+  render();
+}
+function banners(){
+  let h='';
+  if(mode==='local')h+='<div class="banner">البيانات محفوظة على الجهاز ده بس. افتح الصفحة وإنت مسجل دخول بحساب صاحب الصفحة، أو بحساب اتشارك معاه بصلاحية Contributor، عشان كل الأجهزة تشوف نفس البيانات.</div>';
+  if(mode==='db'&&canWrite===false)h+='<div class="banner">حسابك صلاحيته عرض فقط. اطلب من صاحب الصفحة يدّيك صلاحية Contributor عشان تقدر تسجل.</div>';
+  if(mode==='db'&&slow&&!ready())h+='<div class="banner">السيستم المشترك بطيء في الرد. البيانات اللي قدامك ممكن تكون قديمة.</div>';
+  if(permErr)h+='<div class="banner e">الحساب ده مش مسموح له بالبيانات. لازم الإيميل يتضاف في قواعد Firestore.</div>';
+  else if(lastErr)h+='<div class="banner e">تعذر الحفظ في السيستم المشترك. اتأكد من النت، واللي عملته ممكن ما يكونش اتحفظ.</div>';
+  const lg=mode==='db'&&ready()?legacy():null;
+  if(lg)h+=`<div class="banner">لقيت بيانات قديمة على الجهاز ده (${(lg.sales||[]).length} عملية). <button class="btn s" data-a="migrate">رفعها للسيستم المشترك</button></div>`;
+  return h;
+}
+function doMigrate(){
+  const o=legacy();if(!o)return;
+  const L=Object.assign(defaults(),o);
+  ['rateS','rateD','devices','tables','menu'].forEach(k=>{S[k]=L[k];});
+  Object.entries(L.active||{}).forEach(([id,se])=>{if(!S.active[id])S.active[id]=se;});
+  Object.entries(L.orders||{}).forEach(([id,l])=>{if(l&&l.length&&!(S.orders[id]&&S.orders[id].length))S.orders[id]=l;});
+  if(L.cart&&L.cart.length&&!S.cart.length)S.cart=L.cart;
+  const hs=new Set(S.sales.map(s=>s.id));(L.sales||[]).forEach(s=>{if(!hs.has(s.id))S.sales.push(s);});
+  const he=new Set(S.expenses.map(s=>s.id));(L.expenses||[]).forEach(x=>{if(!he.has(x.id))S.expenses.push(x);});
+  try{localStorage.setItem(MIGRATED,'1');}catch(e){}
+  save();render();
+}
+
+let tab='devices', selTable='t1', inv=null, reportDay=dayKey(Date.now()), armed=null, copyText=null;
+const rate=m=>m==='S'?S.rateS:S.rateD;
+const elapsed=(se,now)=>se.segs.reduce((a,g)=>a+((g.to||now)-g.from),0);
+const timeCost=(se,now)=>se.segs.reduce((a,g)=>a+((g.to||now)-g.from)/3600000*rate(g.mode),0);
+const itemsTotal=l=>l.reduce((a,i)=>a+i.price*i.qty,0);
+const curMode=se=>se.segs[se.segs.length-1].mode;
+
+function addTo(list,m){const f=list.find(i=>i.id===m.id);if(f)f.qty++;else list.push({id:m.id,name:m.name,price:m.price,qty:1});}
+function decFrom(list,id){const f=list.find(i=>i.id===id);if(!f)return;f.qty--;if(f.qty<=0)list.splice(list.indexOf(f),1);}
+
+function menuChips(target){return `<div class="chips">${S.menu.map(m=>`<button class="chip" data-a="add" data-t="${target}" data-id="${m.id}">${esc(m.name)} <b>${m.price}</b></button>`).join('')}</div>`;}
+function itemsList(list,target){
+  if(!list.length)return '<div class="note">مفيش طلبات لسه</div>';
+  return `<div class="items">${list.map(i=>`<div class="it"><span>${esc(i.name)}</span><span class="q"><button data-a="dec" data-t="${target}" data-id="${i.id}" aria-label="تقليل">−</button><b>${i.qty}</b><button data-a="add" data-t="${target}" data-id="${i.id}" aria-label="زيادة">+</button><span style="min-width:56px;text-align:end">${money(i.price*i.qty)}</span></span></div>`).join('')}</div>`;}
+
+function deviceCard(d){
+  const se=S.active[d.id], now=Date.now();
+  if(!se)return `<div class="card"><div class="top"><span class="name">${esc(d.name)}</span><span class="badge">فاضي</span></div>
+    <div class="row"><button class="btn p" data-a="start" data-id="${d.id}" data-m="S">فردي · ${S.rateS}/ساعة</button><button class="btn p" data-a="start" data-id="${d.id}" data-m="D">زوجي · ${S.rateD}/ساعة</button></div></div>`;
+  const m=curMode(se);
+  return `<div class="card on"><div class="top"><span class="name">${esc(d.name)}</span><span class="badge ${m==='D'?'d':'on'}">${m==='D'?'زوجي':'فردي'} · شغال</span></div>
+    <div class="timer" data-timer="${d.id}">${hms(elapsed(se,now))}</div>
+    <div class="sub"><span>وقت اللعب</span><span data-tcost="${d.id}">${money(timeCost(se,now))}</span></div>
+    <div class="row"><button class="btn" data-a="toggle" data-id="${d.id}">تحويل إلى ${m==='D'?'فردي':'زوجي'}</button></div>
+    ${itemsList(se.items,d.id)}
+    <details><summary class="note" style="cursor:pointer">إضافة طلب من المنيو</summary><div style="margin-top:8px">${menuChips(d.id)}</div></details>
+    <button class="btn g" data-a="stop" data-id="${d.id}">إنهاء وحساب</button></div>`;}
+
+function viewDevices(){
+  const n=Object.keys(S.active).length;
+  return `<div class="note" style="margin-bottom:10px">${n} جهاز شغال من ${S.devices.length}</div><div class="grid">${S.devices.map(deviceCard).join('')}</div>`;}
+
+function tblTotal(id){return itemsTotal(id==='cafe'?S.cart:(S.orders[id]||[]));}
+function viewCafe(){
+  const all=[...S.tables.map(t=>({id:t.id,name:t.name})),{id:'cafe',name:'تيك أواي'}];
+  if(!all.some(t=>t.id===selTable))selTable=all[0].id;
+  const cur=all.find(t=>t.id===selTable);
+  const list=listFor(selTable)||[];
+  const t=itemsTotal(list);
+  const busy=all.filter(x=>tblTotal(x.id)>0).length;
+  return `<div class="note" style="margin-bottom:10px">${busy} طلب مفتوح</div>
+  <div class="tbls">${all.map(x=>{const tt=tblTotal(x.id);return `<button class="tbl ${tt?'busy':''}" data-a="seltable" data-id="${x.id}" aria-pressed="${selTable===x.id}"><span>${esc(x.name)}</span><b>${tt?money(tt):'فاضية'}</b></button>`;}).join('')}</div>
+  <div class="card" style="margin-top:14px"><div class="name">${esc(cur.name)}</div>${menuChips(selTable)}${itemsList(list,selTable)}
+    <div class="total"><span>الإجمالي</span><span>${money(t)}</span></div>
+    <div class="row"><button class="btn g" data-a="stop" data-id="${selTable}" ${t?'':'disabled'}>تحصيل</button><button class="btn x" data-a="clearcart" data-id="${selTable}" ${list.length?'':'disabled'}>مسح الطلب</button></div></div>`;}
+
+let histMonth=dayKey(Date.now()).slice(0,7);
+function shiftDay(k,n){const d=new Date(k+'T12:00:00');d.setDate(d.getDate()+n);return dayKey(d.getTime());}
+const wdName=k=>new Date(k+'T12:00:00').toLocaleDateString('ar-EG',{weekday:'long'});
+function viewHistory(){
+  const days={};
+  const get=k=>days[k]||(days[k]={ps:0,cf:0,ex:0,n:0});
+  S.sales.forEach(s=>{const k=dayKey(s.ts);if(k.startsWith(histMonth)){const d=get(k);d.ps+=s.timeCost;d.cf+=itemsTotal(s.items);d.n++;}});
+  S.expenses.forEach(e=>{const k=dayKey(e.ts);if(k.startsWith(histMonth))get(k).ex+=e.amount;});
+  const keys=Object.keys(days).sort().reverse();
+  const T=keys.reduce((a,k)=>({ps:a.ps+days[k].ps,cf:a.cf+days[k].cf,ex:a.ex+days[k].ex}),{ps:0,cf:0,ex:0});
+  const gross=T.ps+T.cf;
+  return `<div class="form" style="margin-bottom:12px"><label>الشهر<input type="month" id="hmonth" value="${histMonth}"></label></div>
+  <div class="stats"><div class="stat main"><span>إجمالي الشهر</span><strong>${money(gross)}</strong></div>
+  <div class="stat"><span>بلايستيشن</span><strong>${money(T.ps)}</strong></div><div class="stat"><span>كافيه</span><strong>${money(T.cf)}</strong></div>
+  <div class="stat"><span>مصروفات</span><strong>${money(T.ex)}</strong></div><div class="stat"><span>الصافي</span><strong>${money(gross-T.ex)}</strong></div>
+  <div class="stat"><span>أيام الشغل</span><strong>${keys.length}</strong></div>
+  <div class="stat"><span>متوسط اليوم</span><strong>${keys.length?money(gross/keys.length):'—'}</strong></div></div>
+  <h2>أيام الشهر</h2>
+  ${keys.length?`<div class="scroll"><table><thead><tr><th>اليوم</th><th>بلايستيشن</th><th>كافيه</th><th>مصروفات</th><th>الصافي</th><th></th></tr></thead><tbody>${keys.map(k=>{const d=days[k];return `<tr><td>${wdName(k)}<div class="note" dir="ltr" style="text-align:start">${k}</div></td><td>${money(d.ps)}</td><td>${money(d.cf)}</td><td>${money(d.ex)}</td><td><b>${money(d.ps+d.cf-d.ex)}</b></td><td style="text-align:end"><button class="btn s" data-a="openday" data-id="${k}">فتح</button></td></tr>`;}).join('')}</tbody></table></div>`:'<div class="empty">مفيش عمليات متسجلة في الشهر ده</div>'}`;}
+
+function daySales(){return S.sales.filter(s=>dayKey(s.ts)===reportDay);}
+function viewReport(){
+  const sales=daySales(), exps=S.expenses.filter(e=>dayKey(e.ts)===reportDay);
+  const ps=sales.reduce((a,s)=>a+s.timeCost,0), cf=sales.reduce((a,s)=>a+itemsTotal(s.items),0), ex=exps.reduce((a,e)=>a+e.amount,0);
+  const byDev={}, byItem={};
+  sales.forEach(s=>{if(s.type==='ps')byDev[s.dev]=(byDev[s.dev]||0)+s.timeCost;s.items.forEach(i=>byItem[i.name]=(byItem[i.name]||0)+i.qty);});
+  const top=o=>Object.entries(o).sort((a,b)=>b[1]-a[1])[0];
+  const td=top(byDev), ti=top(byItem);
+  const mins=sales.reduce((a,s)=>a+(s.mins||0),0);
+  copyText=`تقرير ${reportDay}\nبلايستيشن: ${Math.round(ps)}\nكافيه: ${Math.round(cf)}\nالإجمالي: ${Math.round(ps+cf)}\nمصروفات: ${Math.round(ex)}\nالصافي: ${Math.round(ps+cf-ex)}`;
+  const del=(k,id)=>`<button class="btn x s" data-a="del" data-k="${k}" data-id="${id}">${armed===k+id?'تأكيد الحذف':'حذف'}</button>`;
+  return `<div class="form" style="margin-bottom:6px"><button class="btn s" data-a="day" data-id="-1">اليوم اللي قبله</button><label>التاريخ<input type="date" id="rday" value="${reportDay}"></label><button class="btn s" data-a="day" data-id="1">اليوم اللي بعده</button><button class="btn s" data-a="day" data-id="today">النهاردة</button></div>
+  <div class="note" style="margin-bottom:12px">${wdName(reportDay)} · <span dir="ltr">${reportDay}</span></div>
+  <div class="stats"><div class="stat main"><span>الإجمالي</span><strong>${money(ps+cf)}</strong></div>
+  <div class="stat"><span>بلايستيشن</span><strong>${money(ps)}</strong></div><div class="stat"><span>كافيه</span><strong>${money(cf)}</strong></div>
+  <div class="stat"><span>مصروفات</span><strong>${money(ex)}</strong></div><div class="stat"><span>الصافي</span><strong>${money(ps+cf-ex)}</strong></div>
+  <div class="stat"><span>ساعات اللعب</span><strong>${(mins/60).toFixed(1)}</strong></div>
+  <div class="stat"><span>أكتر جهاز إيرادًا</span><strong style="font-size:17px">${td?esc(td[0]):'—'}</strong></div>
+  <div class="stat"><span>أكتر صنف مبيعًا</span><strong style="font-size:17px">${ti?esc(ti[0])+' ('+ti[1]+')':'—'}</strong></div></div>
+  <div class="row" style="margin-top:10px"><button class="btn s" data-a="copy">نسخ الملخص</button></div>
+  <div id="copybox"></div>
+  <h2>العمليات</h2>
+  ${sales.length?`<div class="scroll"><table><thead><tr><th>الوقت</th><th>البند</th><th>المدة</th><th>الإجمالي</th><th></th></tr></thead><tbody>${sales.slice().reverse().map(s=>`<tr><td>${timeStr(s.ts)}</td><td>${s.type==='ps'?esc(s.dev):'كافيه'+(s.dev&&s.dev!=='كافيه'?' · '+esc(s.dev):'')}${s.items.length?`<div class="note">${s.items.map(i=>esc(i.name)+'×'+i.qty).join('، ')}</div>`:''}</td><td>${s.type==='ps'?Math.round(s.mins)+' د':'—'}</td><td>${money(s.timeCost+itemsTotal(s.items))}</td><td>${del('s',s.id)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">مفيش عمليات في اليوم ده</div>'}
+  <h2>المصروفات</h2>
+  <form class="form" id="expform"><label>البند<input id="expn" required placeholder="كهرباء، بن، صيانة…"></label><label>المبلغ<input id="expa" type="number" min="0" step="any" required inputmode="decimal"></label><button class="btn p" type="submit">إضافة</button></form>
+  ${exps.length?`<div class="scroll" style="margin-top:10px"><table><tbody>${exps.map(e=>`<tr><td>${esc(e.name)}</td><td>${money(e.amount)}</td><td style="text-align:end">${del('e',e.id)}</td></tr>`).join('')}</tbody></table></div>`:''}`;}
+
+function viewSettings(){
+  return `<div class="note" style="margin-bottom:10px">الأسعار الموجودة تجريبية، عدّلها على أسعارك. التعديل بيتحفظ تلقائيًا على الجهاز اللي بتفتح منه.</div>
+  <div class="form"><label>سعر الساعة فردي<input type="number" min="0" data-f="rateS" value="${S.rateS}"></label><label>سعر الساعة زوجي<input type="number" min="0" data-f="rateD" value="${S.rateD}"></label></div>
+  <h2>الأجهزة</h2>
+  <div class="grid">${S.devices.map(d=>`<div class="form"><input data-f="dev" data-id="${d.id}" value="${esc(d.name)}" aria-label="اسم الجهاز">${S.active[d.id]?'<span class="note">شغال</span>':`<button class="btn x s" data-a="deldev" data-id="${d.id}">حذف</button>`}</div>`).join('')}</div>
+  <div class="row" style="margin-top:10px"><button class="btn s" data-a="adddev">+ إضافة جهاز</button></div>
+  <h2>الترابيزات</h2>
+  <div class="grid">${S.tables.map(t=>`<div class="form"><input data-f="tbl" data-id="${t.id}" value="${esc(t.name)}" aria-label="اسم الترابيزة">${tblTotal(t.id)?'<span class="note">عليها طلب</span>':`<button class="btn x s" data-a="deltable" data-id="${t.id}">حذف</button>`}</div>`).join('')}</div>
+  <div class="row" style="margin-top:10px"><button class="btn s" data-a="addtable">+ إضافة ترابيزة</button></div>
+  <h2>المنيو</h2>
+  <div class="grid">${S.menu.map(m=>`<div class="form"><input data-f="mname" data-id="${m.id}" value="${esc(m.name)}" aria-label="اسم الصنف"><input data-f="mprice" data-id="${m.id}" type="number" min="0" value="${m.price}" style="max-width:90px" aria-label="السعر"><button class="btn x s" data-a="delmenu" data-id="${m.id}">حذف</button></div>`).join('')}</div>
+  <form class="form" id="menuform" style="margin-top:12px"><label>صنف جديد<input id="mn" required></label><label>السعر<input id="mp" type="number" min="0" step="any" required inputmode="decimal"></label><button class="btn p" type="submit">إضافة للمنيو</button></form>
+  <h2>نسخة احتياطية</h2>
+  <div class="note" style="margin-bottom:10px">كل عملية بتتسجل بتاريخها ووقتها. انسخ النسخة الاحتياطية من وقت لوقت واحتفظ بيها، عشان لو بيانات المتصفح اتمسحت تقدر ترجّعها.</div>
+  <div class="row"><button class="btn s" data-a="backup">نسخ كل البيانات</button><button class="btn s" data-a="restoreform">استرجاع من نسخة</button></div>
+  <div id="bk" style="margin-top:8px"></div>`;}
+
+function viewInvoice(){
+  if(!inv)return '';
+  const rows=inv.items.map(i=>`<tr><td>${esc(i.name)} × ${i.qty}</td><td>${money(i.price*i.qty)}</td></tr>`).join('');
+  return `<div class="overlay"><div class="modal" role="dialog" aria-label="الفاتورة"><div class="name">فاتورة ${esc(inv.dev)}</div>
+  <table class="bill"><tbody>${inv.type==='ps'?`<tr><td>وقت اللعب (${hms(inv.ms)})</td><td>${money(inv.timeCost)}</td></tr>`:''}${rows}</tbody></table>
+  <div class="total"><span>الإجمالي</span><span>${money(inv.timeCost+itemsTotal(inv.items))}</span></div>
+  <div class="row"><button class="btn g" data-a="pay">تم الدفع</button><button class="btn" data-a="back">رجوع</button></div>
+  ${inv.type==='ps'?`<button class="btn x s" data-a="discard" style="align-self:flex-start">${armed==='discard'?'تأكيد إلغاء الجلسة':'إلغاء الجلسة بدون حساب'}</button>`:''}</div></div>`;}
+
+const TABS=[['devices','الأجهزة'],['cafe','الترابيزات'],['report','التقرير'],['history','الأيام'],['settings','الإعدادات']];
+function render(){
+  if(mode==='auth'){document.getElementById('root').innerHTML=viewLogin();return;}
+  const views={devices:viewDevices,cafe:viewCafe,report:viewReport,history:viewHistory,settings:viewSettings};
+  document.getElementById('root').innerHTML=`<header><h1>كاشير الكافيه والبلايستيشن</h1><span class="hd"><span class="badge" id="status"></span><span class="clock" id="clock"></span><button class="btn s" data-a="logout">خروج</button></span></header>
+  <nav>${TABS.map(([k,l])=>`<button data-a="tab" data-id="${k}" aria-current="${tab===k}">${l}</button>`).join('')}</nav>
+  ${banners()}
+  <main>${(ready()||slow)?views[tab]():'<div class="empty">جاري تحميل البيانات…</div>'}</main>${viewInvoice()}`;
+  tick();updStatus();
+}
+function tick(){
+  const now=Date.now();
+  const c=document.getElementById('clock');if(c)c.textContent=new Date(now).toLocaleString('ar-EG',{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  document.querySelectorAll('[data-timer]').forEach(el=>{const se=S.active[el.dataset.timer];if(se)el.textContent=hms(elapsed(se,now));});
+  document.querySelectorAll('[data-tcost]').forEach(el=>{const se=S.active[el.dataset.tcost];if(se)el.textContent=money(timeCost(se,now));});
+}
+setInterval(tick,1000);
+
+function listFor(t){
+  if(t==='cafe')return S.cart;
+  if(t[0]==='t')return S.orders[t]||(S.orders[t]=[]);
+  return S.active[t]&&S.active[t].items;}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-a]');if(!b)return;
+  const a=b.dataset.a,id=b.dataset.id,now=Date.now();
+  if(a!=='del'&&a!=='discard')armed=null;
+  if(a==='tab'){tab=id;}
+  else if(a==='start'){S.active[id]={segs:[{mode:b.dataset.m,from:now}],items:[]};}
+  else if(a==='toggle'){const se=S.active[id];const g=se.segs[se.segs.length-1];g.to=now;se.segs.push({mode:g.mode==='S'?'D':'S',from:now});}
+  else if(a==='add'){const l=listFor(b.dataset.t),m=S.menu.find(x=>x.id===id);if(l&&m)addTo(l,m);else if(l){const f=l.find(x=>x.id===id);if(f)f.qty++;}}
+  else if(a==='dec'){const l=listFor(b.dataset.t);if(l)decFrom(l,id);}
+  else if(a==='clearcart'){if(id==='cafe')S.cart=[];else delete S.orders[id];}
+  else if(a==='seltable'){selTable=id;}
+  else if(a==='addtable'){S.tables.push({id:'t'+uid(),name:'ترابيزة '+(S.tables.length+1)});}
+  else if(a==='deltable'){S.tables=S.tables.filter(x=>x.id!==id);delete S.orders[id];}
+  else if(a==='stop'){
+    if(id==='cafe'||id[0]==='t')inv={type:'cafe',dev:id==='cafe'?'تيك أواي':((S.tables.find(x=>x.id===id)||{}).name||id),id,ms:0,mins:0,timeCost:0,items:listFor(id).map(i=>({...i}))};
+    else{const se=S.active[id],d=S.devices.find(x=>x.id===id);const ms=elapsed(se,now);
+      inv={type:'ps',dev:d?d.name:id,id,ms,mins:ms/60000,timeCost:Math.round(timeCost(se,now)),items:se.items.map(i=>({...i}))};}
+  }
+  else if(a==='back'){inv=null;}
+  else if(a==='pay'){
+    S.sales.push({id:uid(),ts:now,type:inv.type,dev:inv.dev,mins:inv.mins,timeCost:inv.timeCost,items:inv.items});
+    if(inv.type==='cafe'){if(inv.id==='cafe')S.cart=[];else delete S.orders[inv.id];}else delete S.active[inv.id];
+    inv=null;
+  }
+  else if(a==='discard'){if(armed==='discard'){delete S.active[inv.id];inv=null;armed=null;}else armed='discard';}
+  else if(a==='del'){const k=b.dataset.k+id;if(armed===k){if(b.dataset.k==='s')S.sales=S.sales.filter(x=>x.id!==id);else S.expenses=S.expenses.filter(x=>x.id!==id);armed=null;}else armed=k;}
+  else if(a==='copy'){
+    (async()=>{try{await navigator.clipboard.writeText(copyText);b.textContent='اتنسخ';}catch(err){const box=document.getElementById('copybox');box.innerHTML='<textarea id="ct" rows="6" style="width:100%;margin-top:8px"></textarea>';const t=document.getElementById('ct');t.value=copyText;t.select();}})();
+    return;
+  }
+  else if(a==='day'){reportDay=id==='today'?dayKey(now):shiftDay(reportDay,+id);}
+  else if(a==='openday'){reportDay=id;tab='report';}
+  else if(a==='backup'){
+    (async()=>{const txt=JSON.stringify(S),box=document.getElementById('bk');
+      try{await navigator.clipboard.writeText(txt);box.innerHTML='<div class="note">اتنسخت. الصقها في ملاحظات أو ابعتها لنفسك على واتساب.</div>';}
+      catch(err){box.innerHTML='<textarea id="bt" rows="6" style="width:100%"></textarea>';const t=document.getElementById('bt');t.value=txt;t.select();}})();
+    return;}
+  else if(a==='restoreform'){document.getElementById('bk').innerHTML='<textarea id="rt" rows="6" style="width:100%" placeholder="الصق النسخة هنا"></textarea><div class="row" style="margin-top:8px"><button class="btn x s" data-a="restore">استرجاع (هيستبدل بيانات كل الأجهزة)</button></div><div class="note" id="rmsg"></div>';return;}
+  else if(a==='restore'){
+    try{const o=JSON.parse(document.getElementById('rt').value);if(!o||!Array.isArray(o.sales))throw 0;S=Object.assign(defaults(),o);inv=null;}
+    catch(err){document.getElementById('rmsg').textContent='النسخة مش مظبوطة، اتأكد إنك لصقتها كاملة.';return;}}
+  else if(a==='logout'){signOut(auth);return;}
+  else if(a==='adddev'){S.devices.push({id:'d'+uid(),name:'جهاز '+(S.devices.length+1)});}
+  else if(a==='deldev'){S.devices=S.devices.filter(x=>x.id!==id);}
+  else if(a==='delmenu'){S.menu=S.menu.filter(x=>x.id!==id);}
+  save();render();
+});
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.id==='hmonth'){histMonth=t.value||dayKey(Date.now()).slice(0,7);render();return;}
+  if(t.id==='rday'){reportDay=t.value||dayKey(Date.now());render();return;}
+  const f=t.dataset&&t.dataset.f;if(!f)return;
+  if(f==='rateS'||f==='rateD')S[f]=Math.max(0,+t.value||0);
+  else if(f==='dev'){const d=S.devices.find(x=>x.id===t.dataset.id);if(d&&t.value.trim())d.name=t.value.trim();}
+  else if(f==='tbl'){const d=S.tables.find(x=>x.id===t.dataset.id);if(d&&t.value.trim())d.name=t.value.trim();}
+  else if(f==='mname'){const m=S.menu.find(x=>x.id===t.dataset.id);if(m&&t.value.trim())m.name=t.value.trim();}
+  else if(f==='mprice'){const m=S.menu.find(x=>x.id===t.dataset.id);if(m)m.price=Math.max(0,+t.value||0);}
+  save();
+});
+document.addEventListener('submit',e=>{
+  e.preventDefault();
+  if(e.target.id==='loginform'){doLogin();return;}
+  if(e.target.id==='expform'){S.expenses.push({id:uid(),ts:Date.now(),name:document.getElementById('expn').value.trim(),amount:+document.getElementById('expa').value||0});}
+  else if(e.target.id==='menuform'){S.menu.push({id:'m'+uid(),name:document.getElementById('mn').value.trim(),price:+document.getElementById('mp').value||0});}
+  save();render();
+});
+render();
+document.addEventListener('focusout',()=>{
+  if(!pend)return;
+  setTimeout(()=>{const a=document.activeElement;if(pend&&!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))){pend=false;render();}},60);
+});
+function makeDb(){return{
+  doc:p=>({set:b=>setDoc(doc(fs,p),b),delete:()=>deleteDoc(doc(fs,p))}),
+  collection:k=>({onSnapshot:(next,err)=>onSnapshot(collection(fs,k),snap=>next({docs:snap.docs.map(d=>({id:d.id,data:()=>d.data()})),metadata:snap.metadata}),err)})
+};}
+function viewLogin(){return `<div class="card" style="max-width:380px;margin:12vh auto 0"><h1>كاشير CR7</h1><div class="note">سجّل دخول عشان تفتح السيستم.</div>
+<form id="loginform" style="display:flex;flex-direction:column;gap:12px"><label>الإيميل<input id="lem" type="email" dir="ltr" autocomplete="username" required></label><label>كلمة السر<input id="lpw" type="password" dir="ltr" autocomplete="current-password" required></label><button class="btn p" type="submit">دخول</button><div class="note" id="lerr" style="color:var(--danger)"></div></form></div>`;}
+function doLogin(){
+  const em=document.getElementById('lem').value.trim(),pw=document.getElementById('lpw').value,box=document.getElementById('lerr');
+  box.textContent='';
+  signInWithEmailAndPassword(auth,em,pw).catch(err=>{
+    const c=err&&err.code;
+    box.textContent=c==='auth/network-request-failed'?'مفيش اتصال بالنت.':c==='auth/too-many-requests'?'محاولات كتير، استنى شوية وحاول تاني.':'الإيميل أو كلمة السر غلط.';
+  });
+}
+let signedIn=false;
+onAuthStateChanged(auth,user=>{
+  if(user){
+    signedIn=true;dbx=makeDb();mode='db';bind();render();
+    setTimeout(()=>{if(!ready()){slow=true;render();}},10000);
+  }else{
+    if(signedIn){location.reload();return;}
+    mode='auth';render();
+  }
+});
+</script>
+</body></html>

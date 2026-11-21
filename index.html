@@ -178,10 +178,16 @@ const timeStr=ts=>new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute
 const uid=()=>Math.random().toString(36).slice(2,9);
 
 const CR7_MENU=[
-['مشروبات باردة',[['بيبسي',25],['سفن',25],['ميرندا',25],['فيروز',30],['بريل',30],['تويست',25],['ستينج',25],['فيوري',35],['7 كولا',30],['7 سفن',30],['بيبسي دايت',30],['سفن دايت',30]]],
-['عصائر',[['عصير مانجو',40],['عصير فراولة',35],['عصير جوافة',35],['ليمون نعناع',30],['ليمون',25],['موز بحليب',35],['عصير كيوي',45],['أفوكادو وعسل',65],['أفوكادو مكسرات',75],['جوافة نعناع',40],['عناب',25],['عصير بطيخ',50]]],
+['مشروبات ساخنة',[['شاي',10],['شاي براد',15],['شاي ليبتون',15],['شاي اخضر',15],['شاي بحليب',25],['ينسون',15],['قرفة',15],['قرفة بحليب',30],['جنزبيل',15],['حلبة',15],['حلبة بحليب',30],['كوكتيل اعشاب',25],['سحلب مكسرات',35],['سحلب فواكه',45],['هوت سيدر',30],['هوت شوكليت',35],['هوت اوريو',40],['هوت هوهوز',40],['بليلة فواكه',50],['بليلة مكسرات',40],['حمص',25],['اندومي',20],['نعناع',15],['كركديه',15]]],
+['عصائر',[['عصير مانجو',40],['عصير فراولة',35],['عصير جوافة',35],['لمون نعناع',30],['لمون',25],['موز بحليب',35],['عصير كيوي',45],['افوكادو وعسل',65],['افوكادو مكسرات',75],['جوافة نعناع',40],['عناب',25],['عصير بطيخ',50]]],
+['سموزي',[['سموزي مانجو',50],['سموزي فراولة',45],['سموزي جوافة',45],['سموزي موز',45],['سموزي بلوبيري',45],['سموزي ميكس بيري',50],['سموزي باشون فروت',50],['سموزي كيوي',50],['سموزي خوخ',50],['سموزي لمون',30],['سموزي لمون نعناع',35],['سموزي تفاح',40],['سموزي اناناس',45]]],
+['زبادي',[['زبادي عسل',25],['زبادي فراولة',40],['زبادي مانجو',45],['زبادي جوافة',40],['زبادي موز',45],['زبادي كيوي',50],['زبادي خوخ',45],['زبادي CR7',65],['زبادي بلوبيري',60],['زبادي ميكس بيري',60]]],
 ['قهوة',[['قهوة تركي',20],['قهوة تركي دبل',30],['قهوة فرنساوي',30],['قهوة بندق',35],['نسكافيه بلاك',15],['كوفي ميكس',20],['كوفي ميكس حليب',30],['نسكافيه حليب',35],['كابتشينو',45],['فلات وايت',50],['لاتيه',50],['موكا',50],['كورتادو',35],['ميكاتو سنجل',30],['ميكاتو دبل',35]]],
-['فرابيه',[['فرابيه كلاسيك',45],['فرابيه كراميل',50],['فرابيه شوكليت',50],['فرابيه فانيليا',45],['فرابتشينو كلاسيك',50],['فرابتشينو كراميل',55],['فرابتشينو شوكليت',55],['فرابتشينو فانيليا',50],['ايس كوفي',50],['ايس موكا',60],['ايس لاتيه',55],['سبانيش لاتيه',90]]]
+['فرابيه',[['فرابيه كلاسيك',45],['فرابيه كراميل',50],['فرابيه شوكليت',50],['فرابيه فانيليا',45],['فرابتشينو كلاسيك',50],['فرابتشينو كراميل',55],['فرابتشينو شوكليت',55],['فرابتشينو فانيليا',50],['ايس كوفي',50],['ايس موكا',60],['ايس لاتيه',55],['سبانيش لاتيه',90]]],
+['ميلك شيك',[['ميلك شيك فانيليا',50],['ميلك شيك اوريو',60],['ميلك شيك شوكليت',50],['ميلك شيك فراولة',50],['ميلك شيك خوخ',55],['ميلك شيك كيوي',60],['ميلك شيك CR7',80],['ميلك شيك كيت كات',75],['ميلك شيك ميكس بيري',65],['ميلك شيك بلوبيري',60],['ميلك شيك مانجو',55]]],
+['كوكتيل',[['مانجا خوخ',55],['مانجا كيوي',60],['بانانا باشون',65],['مانجو موز',55],['فلوريدا',60],['فلامينجو',65],['ميكس CR7',80],['مانجو باشون',50]]],
+['موخيتو',[['موخيتو كلاسيك',40],['موخيتو نعناع',45],['موخيتو بلوبيري',50],['موخيتو شيري كولا',50],['موخيتو ريدبول',90],['موخيتو فراولة',50],['موخيتو كيوي',60],['موخيتو تفاح',55],['موخيتو باشون',60],['موخيتو اناناس',55],['موخيتو ميكس بيري',65],['موخيتو بلو كرواسو',65]]],
+['مشروبات باردة',[['بيبسي',25],['سفن',25],['ميرندا',25],['فيروز',30],['بريل',30],['تويست',25],['ستينج',25],['فيوري',35],['7 كولا',30],['7 سفن',30],['بيبسي دايت',30],['سفن دايت',30]]]
 ];
 function cr7Items(){const o=[];CR7_MENU.forEach(([cat,l])=>l.forEach(([name,price])=>o.push({id:'m'+uid(),name,price,cat})));return o;}
 function defaults(){return{
@@ -194,6 +200,7 @@ let S=defaults();
 /* Storage: shared `db` documents when available (every device sees the same data), else this device's localStorage.
    Collections: cfg/main, active/<device>, orders/<table>, sales/<id>, expenses/<id>.
    save() diffs S against what the store holds and writes only what changed. */
+const ADMIN_EMAILS=['cr7cafe@gmail.com','cafe_cr7@gamil.com'];
 let dbx=null, mode='loading', canWrite=null, slow=false, lastErr=false, pendingN=0, pend=false, permErr=false, staff=false;
 const COLS=['cfg','active','orders','sales','expenses'];
 const loaded={},fresh={},remote={};
@@ -257,7 +264,7 @@ function bind(){
     dbx.collection(k).onSnapshot(q=>{
       applyRemote(k,q.docs);loaded[k]=true;fresh[k]=!q.metadata.fromCache;updStatus();softRender();
     },e=>{
-      if(e&&e.code==='permission-denied'&&(k==='sales'||k==='expenses')){if(k==='expenses'||!staff)staff=true;loaded[k]=true;fresh[k]=true;updStatus();softRender();return;}
+      if(staff&&e&&e.code==='permission-denied'&&(k==='sales'||k==='expenses')){loaded[k]=true;fresh[k]=true;updStatus();softRender();return;}
       lastErr=true;if(e&&e.code==='permission-denied')permErr=true;softRender();
     });
   });
@@ -379,8 +386,10 @@ function viewOpen(){
   const L=openList(),grand=L.reduce((a,x)=>a+tblTotal(x.id),0);
   return `<div class="stats"><div class="stat main"><span>إجمالي الحسابات المفتوحة</span><strong>${money(grand)}</strong></div><div class="stat"><span>ترابيزات مفتوحة</span><strong>${L.length}</strong></div></div>
   <h2>الحسابات المفتوحة</h2>
-  ${L.length?`<div class="grid">${L.map(x=>{const l=listFor(x.id),t=tblTotal(x.id);return `<div class="card"><div class="top"><span class="name">${esc(x.name)}</span><span class="badge d">${l.reduce((a,i)=>a+i.qty,0)} صنف</span></div>
-    <div class="items">${l.map(i=>`<div class="it"><span>${i.qty} × ${esc(i.name)}${optTxt(i)?`<div class="note">${esc(optTxt(i))}</div>`:''}</span><span>${money(i.price*i.qty)}</span></div>`).join('')}</div>
+  ${L.length?`<div class="grid">${L.map(x=>{const l=listFor(x.id),t=tblTotal(x.id),selN=l.reduce((a,i)=>a+Math.min(pq[i.id]||0,i.qty),0),selT=l.reduce((a,i)=>a+i.price*Math.min(pq[i.id]||0,i.qty),0);return `<div class="card"><div class="top"><span class="name">${esc(x.name)}</span><span class="badge d">${l.reduce((a,i)=>a+i.qty,0)} صنف</span></div>
+    <div class="items">${l.map(i=>`<div class="dl"><div class="it"><span>${i.qty} × ${esc(i.name)}${optTxt(i)?`<div class="note">${esc(optTxt(i))}</div>`:''}</span><span>${money(i.price*i.qty)}</span></div>
+      <div class="opts" style="margin:2px 0 6px"><span class="note">حاسب لوحده:</span><span class="q"><button data-a="pqdec" data-t="${x.id}" data-id="${i.id}" aria-label="تقليل">−</button><b>${Math.min(pq[i.id]||0,i.qty)}</b><button data-a="pqinc" data-t="${x.id}" data-id="${i.id}" aria-label="زيادة">+</button></span></div></div>`).join('')}</div>
+    ${selN?`<button class="btn p" data-a="paysel" data-id="${x.id}" style="width:100%;margin:8px 0">حاسب المحدد (${selN}) · ${money(selT)}</button>`:''}
     <div class="total"><span>الحساب</span><span>${money(t)}</span></div>
     <div class="row"><button class="btn" data-a="gotbl" data-id="${x.id}">إضافة / تعديل</button><button class="btn" data-a="printorder" data-id="${x.id}">طباعة الأوردر</button></div>
     <button class="btn g" data-a="stop" data-id="${x.id}" style="margin-top:8px;width:100%">تحصيل / طباعة الدفع</button></div>`;}).join('')}</div>`:'<div class="empty">مفيش حسابات مفتوحة دلوقتي</div>'}`;
@@ -404,12 +413,23 @@ function draftHTML(id){
   return `<div class="items">${d.map(i=>`<div class="dl"><div class="it"><span><b>${esc(i.name)}</b></span><span class="q"><button data-a="ddec" data-id="${i.id}" aria-label="تقليل">−</button><b>${i.qty}</b><button data-a="dinc" data-id="${i.id}" aria-label="زيادة">+</button><span style="min-width:56px;text-align:end">${money(i.price*i.qty)}</span></span></div>
     <div class="opts" style="margin:4px 0 8px"><span class="note">السكر:</span>${['ساده','مظبوط','زيادة'].map(v=>`<button class="chip ${i.sugar===v?'on':''}" data-a="dsugar" data-id="${i.id}" data-v="${v}">${v}</button>`).join('')}<input data-f="dnote" data-id="${i.id}" placeholder="ملاحظات" value="${esc(i.note||'')}" aria-label="ملاحظات"></div></div>`).join('')}</div>`;
 }
+function mergeInto(dst,src){src.forEach(n=>{const ex=dst.find(x=>x.name===n.name&&x.price===n.price&&(x.sugar||'')===(n.sugar||'')&&(x.note||'')===(n.note||''));if(ex)ex.qty+=n.qty;else dst.push({...n});});}
+function moveTable(from,to){
+  if(!to||to===from)return;
+  const src=listFor(from)||[],dst=listFor(to);
+  mergeInto(dst,src);
+  if(from==='cafe')S.cart=[];else delete S.orders[from];
+  if(drafts[from]){mergeInto(draftOf(to),drafts[from]);delete drafts[from];}
+  selTable=to;flash='اتنقل الطلب من '+tblName(from)+' إلى '+tblName(to)+' ✓';
+}
+const pq={};
 function cafeMain(){
   const id=selTable,name=tblName(id),list=listFor(id)||[],d=draftOf(id);
   const dn=d.reduce((a,i)=>a+i.qty,0),dt=itemsTotal(d),t=itemsTotal(list);
   const conf=list.length?`<div class="name" style="margin-top:16px">اتأكد على ${esc(name)} · عدّل لو في غلط</div>
     <div class="items">${list.map(i=>`<div class="dl"><div class="it"><span><b>${esc(i.name)}</b></span><span class="q"><button data-a="dec" data-t="${id}" data-id="${i.id}" aria-label="تقليل">−</button><b>${i.qty}</b><button data-a="inc" data-t="${id}" data-id="${i.id}" aria-label="زيادة">+</button><span style="min-width:56px;text-align:end">${money(i.price*i.qty)}</span><button class="btn x s" data-a="cdel" data-id="${i.id}" aria-label="حذف">حذف</button></span></div>
       <div class="opts" style="margin:4px 0 8px"><span class="note">السكر:</span>${['ساده','مظبوط','زيادة'].map(v=>`<button class="chip ${i.sugar===v?'on':''}" data-a="csugar" data-id="${i.id}" data-v="${v}">${v}</button>`).join('')}<input data-f="cnote" data-id="${i.id}" placeholder="ملاحظات" value="${esc(i.note||'')}" aria-label="ملاحظات"></div></div>`).join('')}</div>
+    <form class="form" id="mvform" style="margin-top:10px"><label>نقل الطلب لترابيزة رقم<input id="mvnum" type="number" inputmode="numeric" min="1" required></label><button class="btn" type="submit" style="flex:none">نقل</button></form>
     <div class="total"><span>حساب ${esc(name)}</span><span>${money(t)}</span></div>
     <div class="row"><button class="btn" data-a="printorder" data-id="${id}">طباعة الأوردر</button><button class="btn g" data-a="stop" data-id="${id}">تحصيل / طباعة الدفع</button></div>`:'';
   return `<div class="card"><div class="name">${esc(name)} · المنيو</div>
@@ -475,7 +495,7 @@ function viewReport(){
   <h2>العمليات</h2>
   ${sales.length?`<div class="scroll"><table><thead><tr><th>الوقت</th><th>البند</th><th>المدة</th><th>الإجمالي</th><th></th></tr></thead><tbody>${sales.slice().reverse().map(s=>`<tr><td>${timeStr(s.ts)}</td><td>${s.type==='ps'?esc(s.dev):'كافيه'+(s.dev&&s.dev!=='كافيه'?' · '+esc(s.dev):'')}${s.items.length?`<div class="note">${s.items.map(i=>esc(i.name)+'×'+i.qty).join('، ')}</div>`:''}</td><td>${s.type==='ps'?Math.round(s.mins)+' د':'—'}</td><td>${money(s.timeCost+itemsTotal(s.items)-(s.disc||0))}${s.disc?`<div class="note">خصم ${Math.round(s.disc)}</div>`:''}</td><td style="white-space:nowrap"><button class="btn s" data-a="printsale" data-id="${s.id}">طباعة</button> ${del('s',s.id)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">مفيش عمليات في اليوم ده</div>'}
   <h2>المصروفات</h2>
-  <form class="form" id="expform"><label>البند<input id="expn" required placeholder="كهرباء، بن، صيانة…"></label><label>المبلغ<input id="expa" type="number" min="0" step="any" required inputmode="decimal"></label><button class="btn p" type="submit">إضافة</button></form>
+  <div class="note">إضافة المصروفات بقت من صفحة «التقفيل».</div>
   ${exps.length?`<div class="scroll" style="margin-top:10px"><table><tbody>${exps.map(e=>`<tr><td>${esc(e.name)}</td><td>${money(e.amount)}</td><td style="text-align:end">${del('e',e.id)}</td></tr>`).join('')}</tbody></table></div>`:''}`;}
 
 function viewSettings(){
@@ -489,8 +509,8 @@ function viewSettings(){
   <h2>المنيو</h2>
   <div class="grid">${S.menu.map(m=>`<div class="form"><input data-f="mname" data-id="${m.id}" value="${esc(m.name)}" aria-label="اسم الصنف"><input data-f="mprice" data-id="${m.id}" type="number" min="0" value="${m.price}" style="max-width:90px" aria-label="السعر"><input data-f="mcat" data-id="${m.id}" value="${esc(m.cat||'')}" placeholder="القسم" style="max-width:110px" aria-label="القسم"><button class="btn x s" data-a="delmenu" data-id="${m.id}">حذف</button></div>`).join('')}</div>
   <form class="form" id="menuform" style="margin-top:12px"><label>صنف جديد<input id="mn" required></label><label>السعر<input id="mp" type="number" min="0" step="any" required inputmode="decimal"></label><label>القسم<input id="mc" placeholder="اختياري"></label><button class="btn p" type="submit">إضافة للمنيو</button></form>
-  <div class="row" style="margin-top:10px"><button class="btn s" data-a="importmenu">${armed==='importmenu'?'تأكيد: ضيف منيو CR7 (مشروبات)':'+ تحميل منيو CR7 بأسعاره (51 صنف)'}</button></div>
-  <div class="note">بيضيف الأصناف الناقصة وبيحدّث سعر أي صنف بنفس الاسم، ومبيمسحش حاجة.</div>
+  <div class="row" style="margin-top:10px"><button class="btn s" data-a="importmenu">${armed==='importmenu'?'تأكيد: امسح المنيو الحالي واستبدله':'استبدال المنيو بقائمة CR7 (129 صنف)'}</button></div>
+  <div class="note">بيستبدل المنيو كله بالقايمة المطبوعة بالظبط (أي صنف إنت ضايفه بإيدك هيتمسح). الطلبات المفتوحة مش بتتأثر.</div>
   <h2>نسخة احتياطية</h2>
   <div class="note" style="margin-bottom:10px">كل عملية بتتسجل بتاريخها ووقتها. انسخ النسخة الاحتياطية من وقت لوقت واحتفظ بيها، عشان لو بيانات المتصفح اتمسحت تقدر ترجّعها.</div>
   <div class="row"><button class="btn s" data-a="backup">نسخ كل البيانات</button><button class="btn s" data-a="restoreform">استرجاع من نسخة</button></div>
@@ -530,27 +550,31 @@ function summarize(day){
     if(x.type==='ps'){mins+=x.mins||0;const d=devs[x.dev]||(devs[x.dev]={mins:0,cost:0});d.mins+=x.mins||0;d.cost+=x.timeCost;}
     x.items.forEach(i=>items[i.name]=(items[i.name]||0)+i.qty);
   });
-  return {day,n:sales.length,mins:Math.round(mins),ps:Math.round(ps),cf:Math.round(cf),ds:Math.round(ds),total:Math.round(ps+cf-ds),items,devs};
+  const exps=S.expenses.filter(e=>dayKey(e.ts)===day).map(e=>({name:e.name,amount:Math.round(e.amount)}));
+  const ex=exps.reduce((a,e)=>a+e.amount,0),total=Math.round(ps+cf-ds);
+  return {day,n:sales.length,mins:Math.round(mins),ps:Math.round(ps),cf:Math.round(cf),ds:Math.round(ds),total,ex,exps,net:total-ex,items,devs};
 }
 function countsHTML(c){
   const its=Object.entries(c.items).sort((a,b)=>b[1]-a[1]);
   const dv=Object.entries(c.devs||{});
   return `<div class="stats"><div class="stat main"><span>الإجمالي</span><strong>${money(c.total)}</strong></div>
   <div class="stat"><span>بلايستيشن</span><strong>${money(c.ps)}</strong></div><div class="stat"><span>كافيه</span><strong>${money(c.cf)}</strong></div>
-  <div class="stat"><span>خصومات</span><strong>${money(c.ds)}</strong></div><div class="stat"><span>عدد الفواتير</span><strong>${c.n}</strong></div></div>
+  <div class="stat"><span>خصومات</span><strong>${money(c.ds)}</strong></div><div class="stat"><span>عدد الفواتير</span><strong>${c.n}</strong></div>
+  <div class="stat"><span>مصروفات</span><strong>${money(c.ex||0)}</strong></div><div class="stat"><span>الصافي</span><strong>${money(c.total-(c.ex||0))}</strong></div></div>
   <h2 style="margin-top:12px">اللي خرج النهاردة</h2>
   <div class="scroll"><table><tbody>
   <tr><td><b>بلايستيشن</b></td><td><b>${fmtH(c.mins)}</b></td></tr>
   ${dv.map(([n,d])=>`<tr><td class="note">· ${esc(n)}</td><td class="note">${fmtH(d.mins)} · ${money(d.cost)}</td></tr>`).join('')}
   ${its.map(([n,q])=>`<tr><td>${esc(n)}</td><td><b>${q}</b></td></tr>`).join('')}
-  </tbody></table></div>${!its.length&&!c.mins?'<div class="empty">مفيش حاجة خرجت</div>':''}`;
+  </tbody></table></div>${!its.length&&!c.mins?'<div class="empty">مفيش حاجة خرجت</div>':''}
+  ${(c.exps&&c.exps.length)?`<h2 style="margin-top:12px">المصروفات</h2><div class="scroll"><table><tbody>${c.exps.map(e=>`<tr><td>${esc(e.name)}</td><td>${money(e.amount)}</td></tr>`).join('')}</tbody></table></div>`:''}`;
 }
 function closeText(c){
   return `تقفيل ${c.day}\nبلايستيشن: ${fmtH(c.mins)} (${c.ps} ج.م)\n`+Object.entries(c.items).map(([n,q])=>n+': '+q).join('\n')+`\nكافيه: ${c.cf} ج.م\nخصومات: ${c.ds} ج.م\nالإجمالي: ${c.total} ج.م\nفواتير: ${c.n}`
-    +(c.cash!=null?`\nالموجود في الدرج: ${c.cash} ج.م (الفرق ${c.cash-c.total})`:'');
+    +((c.ex)?`\nمصروفات: ${c.ex} ج.م\nالصافي: ${c.total-c.ex} ج.م`:'')+(c.cash!=null?`\nالموجود في الدرج: ${c.cash} ج.م (الفرق ${c.cash-(c.total-(c.ex||0))})`:'');
 }
 function closingCard(c){
-  const diff=c.cash!=null?c.cash-c.total:null;
+  const diff=c.cash!=null?c.cash-(c.total-(c.ex||0)):null;
   const del=!staff?`<button class="btn x s" data-a="delclose" data-id="${c.id}">${armed==='cl'+c.id?'تأكيد الحذف':'حذف'}</button>`:'';
   return `<details class="card"><summary style="cursor:pointer"><b>${wdName(c.day)} <span dir="ltr">${c.day}</span></b> · قُفل ${timeStr(c.ts)} · ${esc(c.by||'')}<div class="note">إجمالي ${money(c.total)}${diff!=null?' · الفرق في الدرج '+(diff>0?'+':'')+Math.round(diff):''}</div></summary>
   <div style="margin-top:10px">${countsHTML(c)}${c.cash!=null?`<div class="note" style="margin-top:8px">الموجود في الدرج: ${money(c.cash)} · ${diff===0?'مظبوط':diff>0?'زيادة '+Math.round(diff):'عجز '+Math.round(-diff)}</div>`:''}${c.note?`<div class="note">ملاحظة: ${esc(c.note)}</div>`:''}
@@ -565,6 +589,9 @@ function viewClose(){
   <div class="note" style="margin-bottom:10px">${wdName(today)} · <span dir="ltr">${today}</span> · ${doneToday?'اتقفل النهاردة ✓ (ممكن تقفل تاني لو في شغل بعد التقفيل)':'لسه ما اتقفلش'}</div>
   ${busy?`<div class="banner">في ${busy} جلسة/جلسات شغالة لسه — اللي لسه ما اتحاسبش مش هيدخل في التقفيل.</div>`:''}
   ${countsHTML(c)}
+  <h2 style="margin-top:12px">مصروفات النهاردة</h2>
+  <form class="form" id="expform"><label>البند<input id="expn" required placeholder="بن، مياه، صيانة…"></label><label>المبلغ<input id="expa" type="number" min="0" step="any" required inputmode="decimal"></label><button class="btn p" type="submit">إضافة مصروف</button></form>
+  ${c.exps.length?`<div class="scroll" style="margin-top:10px"><table><tbody>${S.expenses.filter(e=>dayKey(e.ts)===today).map(e=>`<tr><td>${esc(e.name)}</td><td>${money(e.amount)}</td><td style="text-align:end">${staff?'':`<button class="btn x s" data-a="del" data-k="e" data-id="${e.id}">${armed==='e'+e.id?'تأكيد الحذف':'حذف'}</button>`}</td></tr>`).join('')}</tbody></table></div>`:'<div class="note">مفيش مصروفات النهاردة لسه</div>'}
   <div class="row" style="margin-top:10px"><button class="btn" data-a="printclose" data-id="live">طباعة ملخص اليوم كله</button></div>
   <h2 style="margin-top:12px">تقفيل اليوم</h2>
   <form class="form" id="closeform"><label>الموجود فعلًا في الدرج (اختياري)<input id="ccash" type="number" min="0" step="any" inputmode="decimal"></label><label>ملاحظة (اختياري)<input id="cnote"></label><button class="btn p" type="submit">تقفيل اليوم</button></form>
@@ -671,7 +698,11 @@ document.addEventListener('click',e=>{
   else if(a==='pay'||a==='payprint'){
     const sale={id:uid(),ts:now,type:inv.type,dev:inv.dev,mins:inv.mins,timeCost:inv.timeCost,items:inv.items,disc:invDisc()};
     S.sales.push(sale);if(a==='payprint')toPrint=sale;
-    if(inv.type==='cafe'){if(inv.id==='cafe')S.cart=[];else delete S.orders[inv.id];}else delete S.active[inv.id];
+    if(inv.type==='cafe'&&inv.parts){
+      const l=listFor(inv.id)||[];
+      inv.parts.forEach(pt=>{const f=l.find(x=>x.id===pt.id);if(f){f.qty-=pt.qty;if(f.qty<=0)l.splice(l.indexOf(f),1);}delete pq[pt.id];});
+    }
+    else if(inv.type==='cafe'){if(inv.id==='cafe')S.cart=[];else delete S.orders[inv.id];}else delete S.active[inv.id];
     inv=null;
   }
   else if(a==='discard'){if(armed==='discard'){delete S.active[inv.id];inv=null;armed=null;}else armed='discard';}
@@ -704,6 +735,13 @@ document.addEventListener('click',e=>{
   else if(a==='ddec'){const d=draftOf(selTable),f=d.find(x=>x.id===id);if(f){f.qty--;if(f.qty<=0)d.splice(d.indexOf(f),1);}}
   else if(a==='dsugar'){const f=draftOf(selTable).find(x=>x.id===id);if(f){if(f.sugar===b.dataset.v)delete f.sugar;else f.sugar=b.dataset.v;}}
   else if(a==='goord'){setTimeout(()=>{const e=document.getElementById('ordcard');if(e)e.scrollIntoView({behavior:'smooth',block:'start'});},60);}
+  else if(a==='pqinc'){const l=listFor(b.dataset.t),f=l&&l.find(x=>x.id===id);if(f&&(pq[id]||0)<f.qty)pq[id]=(pq[id]||0)+1;}
+  else if(a==='pqdec'){if(pq[id]>0)pq[id]--;}
+  else if(a==='paysel'){
+    const l=listFor(id)||[],parts=[],items=[];
+    l.forEach(i=>{const q=Math.min(pq[i.id]||0,i.qty);if(q>0){parts.push({id:i.id,qty:q});items.push({...i,qty:q});}});
+    if(items.length)inv={type:'cafe',dev:tblName(id)+' (جزء)',id,parts,ms:0,mins:0,timeCost:0,items};
+  }
   else if(a==='cdel'){const l=listFor(selTable);const f=l&&l.find(x=>x.id===id);if(f)l.splice(l.indexOf(f),1);}
   else if(a==='csugar'){const l=listFor(selTable),f=l&&l.find(x=>x.id===id);if(f){if(f.sugar===b.dataset.v)delete f.sugar;else f.sugar=b.dataset.v;}}
   else if(a==='dclear'){drafts[id]=[];}
@@ -732,7 +770,7 @@ document.addEventListener('click',e=>{
   else if(a==='importmenu'){
     if(armed!=='importmenu'){armed='importmenu';render();return;}
     armed=null;
-    cr7Items().forEach(n=>{const ex=S.menu.find(m=>m.name.trim()===n.name);if(ex){ex.price=n.price;ex.cat=n.cat;}else S.menu.push(n);});
+    S.menu=cr7Items();
   }
   else if(a==='delmenu'){S.menu=S.menu.filter(x=>x.id!==id);}
   save();render();
@@ -775,6 +813,7 @@ document.addEventListener('input',e=>{
   document.getElementById('invdisc').textContent='-'+money(dd);
 });
 document.addEventListener('submit',e=>{
+  if(e.target.id==='mvform'){e.preventDefault();const to=tblIdFor(document.getElementById('mvnum').value);if(to&&to!==selTable){moveTable(selTable,to);save();}render();return;}
   if(e.target.id==='tform'){e.preventDefault();const tid=tblIdFor(document.getElementById('tnum').value);if(tid){selTable=tid;flash='';}document.activeElement&&document.activeElement.blur&&document.activeElement.blur();render();return;}
   if(e.target.id==='closeform'){
     e.preventDefault();
@@ -807,11 +846,11 @@ function receiptHTML(s){
 }
 function closeReceiptHTML(c){
   const its=Object.entries(c.items||{}).sort((a,b)=>b[1]-a[1]),dv=Object.entries(c.devs||{}),d=new Date(c.ts||Date.now());
-  const diff=c.cash!=null?c.cash-c.total:null;
+  const diff=c.cash!=null?c.cash-(c.total-(c.ex||0)):null;
   return `<div class="rc"><img class="logo" src="${LOGO_MARK}" alt="CR7" style="width:30mm;margin:0 auto 4px"><h2>تقفيل يوم</h2><div class="rm">${wdName(c.day)} ${esc(c.day)}</div><div class="rm">طُبع ${d.toLocaleDateString('ar-EG')} ${timeStr(d.getTime())}${c.by?' · '+esc(c.by):''}</div>
   <table><tr><td><b>بلايستيشن</b></td><td><b>${fmtH(c.mins)}</b></td></tr>${dv.map(([n,x])=>`<tr><td>· ${esc(n)}</td><td>${fmtH(x.mins)}</td></tr>`).join('')}${its.map(([n,q])=>`<tr><td>${esc(n)}</td><td><b>${q}</b></td></tr>`).join('')}</table>
-  <table><tr><td>بلايستيشن</td><td>${c.ps}</td></tr><tr><td>كافيه</td><td>${c.cf}</td></tr><tr><td>خصومات</td><td>-${c.ds}</td></tr><tr><td>عدد الفواتير</td><td>${c.n}</td></tr>${c.cash!=null?`<tr><td>الموجود في الدرج</td><td>${c.cash}</td></tr><tr><td>الفرق</td><td>${diff>0?'+':''}${diff}</td></tr>`:''}</table>
-  <div class="rt"><span>الإجمالي</span><span>${c.total} ج.م</span></div>${c.note?`<div class="rm">ملاحظة: ${esc(c.note)}</div>`:''}</div>`;
+  <table><tr><td>بلايستيشن</td><td>${c.ps}</td></tr><tr><td>كافيه</td><td>${c.cf}</td></tr><tr><td>خصومات</td><td>-${c.ds}</td></tr><tr><td>عدد الفواتير</td><td>${c.n}</td></tr>${c.ex?`<tr><td>مصروفات</td><td>-${c.ex}</td></tr>${(c.exps||[]).map(e=>`<tr><td>· ${esc(e.name)}</td><td>${e.amount}</td></tr>`).join('')}`:''}${c.cash!=null?`<tr><td>الموجود في الدرج</td><td>${c.cash}</td></tr><tr><td>الفرق</td><td>${diff>0?'+':''}${diff}</td></tr>`:''}</table>
+  <div class="rt"><span>الإجمالي</span><span>${c.total} ج.م</span></div>${c.ex?`<div class="rt"><span>الصافي</span><span>${c.total-c.ex} ج.م</span></div>`:''}${c.note?`<div class="rm">ملاحظة: ${esc(c.note)}</div>`:''}</div>`;
 }
 function orderHTML(name,list){
   const d=new Date(),n=list.reduce((a,i)=>a+i.qty,0);
@@ -841,7 +880,7 @@ function doLogin(){
 let signedIn=false;
 onAuthStateChanged(auth,user=>{
   if(user){
-    signedIn=true;dbx=makeDb();mode='db';bind();bindClosings();render();
+    staff=!ADMIN_EMAILS.includes(String(user.email||'').toLowerCase());signedIn=true;dbx=makeDb();mode='db';bind();bindClosings();render();
     setTimeout(()=>{if(!ready()){slow=true;render();}},10000);
   }else{
     if(signedIn){location.reload();return;}

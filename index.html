@@ -353,6 +353,19 @@ function viewDevices(){
   return `<div class="note" style="margin-bottom:10px">${n} جهاز شغال من ${S.devices.length}</div><div class="grid">${S.devices.map(deviceCard).join('')}</div>`;}
 
 function tblTotal(id){return itemsTotal(id==='cafe'?S.cart:(S.orders[id]||[]));}
+function openList(){
+  return [{id:'cafe',name:'تيك أواي'},...S.tables.map(t=>({id:t.id,name:t.name}))].filter(x=>(listFor(x.id)||[]).length>0);
+}
+function viewOpen(){
+  const L=openList(),grand=L.reduce((a,x)=>a+tblTotal(x.id),0);
+  return `<div class="stats"><div class="stat main"><span>إجمالي الحسابات المفتوحة</span><strong>${money(grand)}</strong></div><div class="stat"><span>ترابيزات مفتوحة</span><strong>${L.length}</strong></div></div>
+  <h2>الحسابات المفتوحة</h2>
+  ${L.length?`<div class="grid">${L.map(x=>{const l=listFor(x.id),t=tblTotal(x.id);return `<div class="card"><div class="top"><span class="name">${esc(x.name)}</span><span class="badge d">${l.reduce((a,i)=>a+i.qty,0)} صنف</span></div>
+    <div class="items">${l.map(i=>`<div class="it"><span>${i.qty} × ${esc(i.name)}${optTxt(i)?`<div class="note">${esc(optTxt(i))}</div>`:''}</span><span>${money(i.price*i.qty)}</span></div>`).join('')}</div>
+    <div class="total"><span>الحساب</span><span>${money(t)}</span></div>
+    <div class="row"><button class="btn" data-a="gotbl" data-id="${x.id}">تعديل الطلب</button><button class="btn" data-a="printorder" data-id="${x.id}">طباعة الأوردر</button></div>
+    <button class="btn g" data-a="stop" data-id="${x.id}" style="margin-top:8px;width:100%">تحصيل / طباعة الدفع</button></div>`;}).join('')}</div>`:'<div class="empty">مفيش حسابات مفتوحة دلوقتي</div>'}`;
+}
 let tnumTxt='';
 const digitsOf=x=>{const m=String(x).match(/\d+/);return m?String(+m[0]):'';};
 function findTable(txt){
@@ -550,15 +563,15 @@ function viewAlert(){
   <div class="row"><button class="btn" data-a="addlimit" data-id="${id}" data-n="15">+15 د</button><button class="btn" data-a="addlimit" data-id="${id}" data-n="30">+30 د</button><button class="btn" data-a="addlimit" data-id="${id}" data-n="60">+60 د</button></div>
   <div class="row"><button class="btn" data-a="openlimit" data-id="${id}">كمّل مفتوح</button><button class="btn" data-a="ackalert" data-id="${id}">إيقاف التنبيه</button></div></div></div>`;
 }
-const TABS=[['devices','الأجهزة'],['cafe','الترابيزات'],['bills','الفواتير'],['close','التقفيل'],['report','التقرير'],['history','الأيام'],['settings','الإعدادات']];
-const STAFF_TABS=['devices','cafe','bills','close'], ADMIN_HIDE=['bills'];
+const TABS=[['devices','الأجهزة'],['cafe','الطلبات'],['open','الحسابات'],['bills','الفواتير'],['close','التقفيل'],['report','التقرير'],['history','الأيام'],['settings','الإعدادات']];
+const STAFF_TABS=['devices','cafe','open','bills','close'], ADMIN_HIDE=['bills'];
 const tabsFor=()=>TABS.filter(([k])=>staff?STAFF_TABS.includes(k):!ADMIN_HIDE.includes(k));
 function render(){
   if(mode==='auth'){document.getElementById('root').innerHTML=viewLogin();return;}
   if(staff&&!STAFF_TABS.includes(tab))tab='devices';if(!staff&&ADMIN_HIDE.includes(tab))tab='devices';
-  const views={devices:viewDevices,cafe:viewCafe,bills:viewBills,close:viewClose,report:viewReport,history:viewHistory,settings:viewSettings};
+  const views={devices:viewDevices,cafe:viewCafe,open:viewOpen,bills:viewBills,close:viewClose,report:viewReport,history:viewHistory,settings:viewSettings};
   document.getElementById('root').innerHTML=`<header><span class="brand"><img class="logo" src="${LOGO_MARK}" alt="CR7" style="height:34px;width:auto"><h1>كاشير الكافيه والبلايستيشن</h1></span><span class="hd"><span class="badge" id="status"></span><span class="clock" id="clock"></span><button class="btn s" data-a="logout">خروج</button></span></header>
-  <nav>${tabsFor().map(([k,l])=>`<button data-a="tab" data-id="${k}" aria-current="${tab===k}">${l}</button>`).join('')}</nav>
+  <nav>${tabsFor().map(([k,l])=>`<button data-a="tab" data-id="${k}" aria-current="${tab===k}">${l}${k==='open'&&openList().length?' ('+openList().length+')':''}</button>`).join('')}</nav>
   ${banners()}
   <main>${permErr?'<div class="empty">السيستم مقفول لحد ما قواعد Firestore تتظبط. بعد ما تظبطها حدّث الصفحة.</div>':(ready()||slow)?views[tab]():'<div class="empty">جاري تحميل البيانات…</div>'}</main>${viewInvoice()}${viewAlert()}`;
   tick();updStatus();
@@ -647,6 +660,7 @@ document.addEventListener('click',e=>{
     if(armed==='cl'+id){armed=null;if(dbx)dbx.doc('closings/'+id).delete().catch(()=>{closErr=true;softRender();});closings=closings.filter(x=>x.id!==id);}
     else armed='cl'+id;
     render();return;}
+  else if(a==='gotbl'){selTable=id;tab='cafe';}
   else if(a==='printorder'){
     const l=listFor(id)||[];const nm=id==='cafe'?'تيك أواي':((S.tables.find(x=>x.id===id)||{}).name||id);
     if(l.length)pHTML=orderHTML(nm,l);

@@ -1,4 +1,4 @@
-const V="cr7-v9";
+const V="cr7-v7";
 const CORE=["./","index.html","fb.js","manifest.json","icon-192.png","icon-512.png","apple-touch-icon.png"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(CORE.map(u=>new Request(u,{cache:"reload"})))).then(()=>self.skipWaiting()));});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==V&&k!=="cr7-fonts").map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});

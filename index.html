@@ -157,10 +157,17 @@ const dayKey=ts=>new Date(ts).toLocaleDateString('en-CA');
 const timeStr=ts=>new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 const uid=()=>Math.random().toString(36).slice(2,9);
 
+const CR7_MENU=[
+['مشروبات باردة',[['بيبسي',25],['سفن',25],['ميرندا',25],['فيروز',30],['بريل',30],['تويست',25],['ستينج',25],['فيوري',35],['7 كولا',30],['7 سفن',30],['بيبسي دايت',30],['سفن دايت',30]]],
+['عصائر',[['عصير مانجو',40],['عصير فراولة',35],['عصير جوافة',35],['ليمون نعناع',30],['ليمون',25],['موز بحليب',35],['عصير كيوي',45],['أفوكادو وعسل',65],['أفوكادو مكسرات',75],['جوافة نعناع',40],['عناب',25],['عصير بطيخ',50]]],
+['قهوة',[['قهوة تركي',20],['قهوة تركي دبل',30],['قهوة فرنساوي',30],['قهوة بندق',35],['نسكافيه بلاك',15],['كوفي ميكس',20],['كوفي ميكس حليب',30],['نسكافيه حليب',35],['كابتشينو',45],['فلات وايت',50],['لاتيه',50],['موكا',50],['كورتادو',35],['ميكاتو سنجل',30],['ميكاتو دبل',35]]],
+['فرابيه',[['فرابيه كلاسيك',45],['فرابيه كراميل',50],['فرابيه شوكليت',50],['فرابيه فانيليا',45],['فرابتشينو كلاسيك',50],['فرابتشينو كراميل',55],['فرابتشينو شوكليت',55],['فرابتشينو فانيليا',50],['ايس كوفي',50],['ايس موكا',60],['ايس لاتيه',55],['سبانيش لاتيه',90]]]
+];
+function cr7Items(){const o=[];CR7_MENU.forEach(([cat,l])=>l.forEach(([name,price])=>o.push({id:'m'+uid(),name,price,cat})));return o;}
 function defaults(){return{
   devices:[1,2,3,4].map(i=>({id:'d'+i,name:'جهاز '+i})),
   rateS:20,rateD:30,
-  menu:[['شاي',10],['قهوة تركي',20],['نسكافيه',25],['ينسون',10],['مياه',8],['بيبسي',15],['شيبسي',10],['إندومي',25]].map(([name,price],i)=>({id:'m'+i,name,price})),
+  menu:cr7Items(),
   tables:[1,2,3,4,5,6].map(i=>({id:'t'+i,name:'ترابيزة '+i})),orders:{},
   active:{},sales:[],expenses:[],cart:[]};}
 let S=defaults();
@@ -290,7 +297,11 @@ const curMode=se=>se.segs[se.segs.length-1].mode;
 function addTo(list,m){const f=list.find(i=>i.id===m.id);if(f)f.qty++;else list.push({id:m.id,name:m.name,price:m.price,qty:1});}
 function decFrom(list,id){const f=list.find(i=>i.id===id);if(!f)return;f.qty--;if(f.qty<=0)list.splice(list.indexOf(f),1);}
 
-function menuChips(target){return `<div class="chips">${S.menu.map(m=>`<button class="chip" data-a="add" data-t="${target}" data-id="${m.id}">${esc(m.name)} <b>${m.price}</b></button>`).join('')}</div>`;}
+function menuChips(target){
+  const groups={};S.menu.forEach(m=>{const c=m.cat||'أخرى';(groups[c]=groups[c]||[]).push(m);});
+  const order=Object.keys(groups).sort((a,b)=>(a==='أخرى')-(b==='أخرى'));
+  const one=order.length<2;
+  return order.map(c=>`${one?'':`<div class="note" style="margin:10px 0 4px"><b>${esc(c)}</b></div>`}<div class="chips">${groups[c].map(m=>`<button class="chip" data-a="add" data-t="${target}" data-id="${m.id}">${esc(m.name)} <b>${m.price}</b></button>`).join('')}</div>`).join('');}
 function itemsList(list,target){
   if(!list.length)return '<div class="note">مفيش طلبات لسه</div>';
   return `<div class="items">${list.map(i=>`<div class="it"><span>${esc(i.name)}</span><span class="q"><button data-a="dec" data-t="${target}" data-id="${i.id}" aria-label="تقليل">−</button><b>${i.qty}</b><button data-a="add" data-t="${target}" data-id="${i.id}" aria-label="زيادة">+</button><span style="min-width:56px;text-align:end">${money(i.price*i.qty)}</span></span></div>`).join('')}</div>`;}
@@ -394,8 +405,10 @@ function viewSettings(){
   <div class="grid">${S.tables.map(t=>`<div class="form"><input data-f="tbl" data-id="${t.id}" value="${esc(t.name)}" aria-label="اسم الترابيزة">${tblTotal(t.id)?'<span class="note">عليها طلب</span>':`<button class="btn x s" data-a="deltable" data-id="${t.id}">حذف</button>`}</div>`).join('')}</div>
   <div class="row" style="margin-top:10px"><button class="btn s" data-a="addtable">+ إضافة ترابيزة</button></div>
   <h2>المنيو</h2>
-  <div class="grid">${S.menu.map(m=>`<div class="form"><input data-f="mname" data-id="${m.id}" value="${esc(m.name)}" aria-label="اسم الصنف"><input data-f="mprice" data-id="${m.id}" type="number" min="0" value="${m.price}" style="max-width:90px" aria-label="السعر"><button class="btn x s" data-a="delmenu" data-id="${m.id}">حذف</button></div>`).join('')}</div>
-  <form class="form" id="menuform" style="margin-top:12px"><label>صنف جديد<input id="mn" required></label><label>السعر<input id="mp" type="number" min="0" step="any" required inputmode="decimal"></label><button class="btn p" type="submit">إضافة للمنيو</button></form>
+  <div class="grid">${S.menu.map(m=>`<div class="form"><input data-f="mname" data-id="${m.id}" value="${esc(m.name)}" aria-label="اسم الصنف"><input data-f="mprice" data-id="${m.id}" type="number" min="0" value="${m.price}" style="max-width:90px" aria-label="السعر"><input data-f="mcat" data-id="${m.id}" value="${esc(m.cat||'')}" placeholder="القسم" style="max-width:110px" aria-label="القسم"><button class="btn x s" data-a="delmenu" data-id="${m.id}">حذف</button></div>`).join('')}</div>
+  <form class="form" id="menuform" style="margin-top:12px"><label>صنف جديد<input id="mn" required></label><label>السعر<input id="mp" type="number" min="0" step="any" required inputmode="decimal"></label><label>القسم<input id="mc" placeholder="اختياري"></label><button class="btn p" type="submit">إضافة للمنيو</button></form>
+  <div class="row" style="margin-top:10px"><button class="btn s" data-a="importmenu">${armed==='importmenu'?'تأكيد: ضيف منيو CR7 (مشروبات)':'+ تحميل منيو CR7 بأسعاره (51 صنف)'}</button></div>
+  <div class="note">بيضيف الأصناف الناقصة وبيحدّث سعر أي صنف بنفس الاسم، ومبيمسحش حاجة.</div>
   <h2>نسخة احتياطية</h2>
   <div class="note" style="margin-bottom:10px">كل عملية بتتسجل بتاريخها ووقتها. انسخ النسخة الاحتياطية من وقت لوقت واحتفظ بيها، عشان لو بيانات المتصفح اتمسحت تقدر ترجّعها.</div>
   <div class="row"><button class="btn s" data-a="backup">نسخ كل البيانات</button><button class="btn s" data-a="restoreform">استرجاع من نسخة</button></div>
@@ -543,7 +556,7 @@ function listFor(t){
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-a]');if(!b)return;
   const a=b.dataset.a,id=b.dataset.id,now=Date.now();let toPrint=null;
-  if(a!=='del'&&a!=='discard'&&a!=='delclose')armed=null;
+  if(a!=='del'&&a!=='discard'&&a!=='delclose'&&a!=='importmenu')armed=null;
   if(a==='tab'){tab=id;}
   else if(a==='start'){
     const dv=pick[id]===undefined?0:pick[id];const lim=dv==='c'?(pickC[id]||0):(+dv||0);
@@ -598,6 +611,11 @@ document.addEventListener('click',e=>{
   else if(a==='logout'){signOut(auth);return;}
   else if(a==='adddev'){S.devices.push({id:'d'+uid(),name:'جهاز '+(S.devices.length+1)});}
   else if(a==='deldev'){S.devices=S.devices.filter(x=>x.id!==id);}
+  else if(a==='importmenu'){
+    if(armed!=='importmenu'){armed='importmenu';render();return;}
+    armed=null;
+    cr7Items().forEach(n=>{const ex=S.menu.find(m=>m.name.trim()===n.name);if(ex){ex.price=n.price;ex.cat=n.cat;}else S.menu.push(n);});
+  }
   else if(a==='delmenu'){S.menu=S.menu.filter(x=>x.id!==id);}
   save();render();
   if(toPrint)printReceipt(toPrint);
@@ -613,6 +631,7 @@ document.addEventListener('change',e=>{
   else if(f==='dev'){const d=S.devices.find(x=>x.id===t.dataset.id);if(d&&t.value.trim())d.name=t.value.trim();}
   else if(f==='tbl'){const d=S.tables.find(x=>x.id===t.dataset.id);if(d&&t.value.trim())d.name=t.value.trim();}
   else if(f==='mname'){const m=S.menu.find(x=>x.id===t.dataset.id);if(m&&t.value.trim())m.name=t.value.trim();}
+  else if(f==='mcat'){const m=S.menu.find(x=>x.id===t.dataset.id);if(m){const v=t.value.trim();if(v)m.cat=v;else delete m.cat;}}
   else if(f==='mprice'){const m=S.menu.find(x=>x.id===t.dataset.id);if(m)m.price=Math.max(0,+t.value||0);}
   save();
 });
@@ -639,7 +658,7 @@ document.addEventListener('submit',e=>{
   e.preventDefault();
   if(e.target.id==='loginform'){doLogin();return;}
   if(e.target.id==='expform'){S.expenses.push({id:uid(),ts:Date.now(),name:document.getElementById('expn').value.trim(),amount:+document.getElementById('expa').value||0});}
-  else if(e.target.id==='menuform'){S.menu.push({id:'m'+uid(),name:document.getElementById('mn').value.trim(),price:+document.getElementById('mp').value||0});}
+  else if(e.target.id==='menuform'){S.menu.push({id:'m'+uid(),name:document.getElementById('mn').value.trim(),price:+document.getElementById('mp').value||0,...(document.getElementById('mc').value.trim()?{cat:document.getElementById('mc').value.trim()}:{})});}
   save();render();
 });
 render();

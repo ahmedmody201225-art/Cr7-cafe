@@ -62,6 +62,10 @@ html[data-theme="dark"] .btn.g{color:#06210f}
 .opts{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0;padding:8px;border:1px dashed var(--line);border-radius:10px}
 .goord{position:sticky;bottom:10px;width:100%;margin-top:10px;box-shadow:0 4px 14px rgba(0,0,0,.25);font-size:17px;padding:12px}
 @media(min-width:900px){.goord{display:none}}
+.mcats{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}
+.mcats .chip{font-size:17px;padding:9px 14px}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.mgrid .mi{min-height:52px}
 .mcols{display:flex;gap:10px;overflow-x:auto;align-items:flex-start;padding-bottom:6px;scroll-snap-type:x proximity}
 .mcol{flex:1 0 150px;min-width:150px;display:flex;flex-direction:column;gap:4px;scroll-snap-align:start}
 .mh{font-weight:700;background:var(--accent);color:var(--accent-fg);border-radius:8px;padding:6px 10px;text-align:center;position:sticky;top:0}
@@ -398,12 +402,19 @@ function viewOpen(){
 /* ---- orders page: draft per table, then one confirm button ---- */
 const drafts={};let flash='',msq='',mcolsLeft=0;
 const norm=x=>String(x||'').toLowerCase().replace(/[\u064B-\u0652\u0640]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').trim();
+let mcat='';
 function menuCols(target,act,q){
   const nq=norm(q),groups={};
-  S.menu.forEach(m=>{if(nq&&!norm(m.name).includes(nq))return;const c=m.cat||'أخرى';(groups[c]=groups[c]||[]).push(m);});
+  S.menu.forEach(m=>{const c=m.cat||'أخرى';(groups[c]=groups[c]||[]).push(m);});
   const order=Object.keys(groups).sort((a,b)=>(a==='أخرى')-(b==='أخرى'));
-  if(!order.length)return '<div class="empty">مفيش مشروب بالاسم ده</div>';
-  return order.map(c=>`<div class="mcol"><div class="mh">${esc(c)}</div>${groups[c].map(m=>`<button class="mi" data-a="${act}" data-t="${target}" data-id="${m.id}"><span>${esc(m.name)}</span><b>${m.price}</b></button>`).join('')}</div>`).join('');
+  const btn=m=>`<button class="mi" data-a="${act}" data-t="${target}" data-id="${m.id}"><span>${esc(m.name)}</span><b>${m.price}</b></button>`;
+  if(nq){
+    const hits=S.menu.filter(m=>norm(m.name).includes(nq));
+    return hits.length?`<div class="mgrid">${hits.map(btn).join('')}</div>`:'<div class="empty">مفيش مشروب بالاسم ده</div>';
+  }
+  if(!order.includes(mcat))mcat=order[0]||'';
+  return `<div class="mcats">${order.map(c=>`<button class="chip ${c===mcat?'on':''}" data-a="mcat" data-id="${esc(c)}">${esc(c)} <b>${groups[c].length}</b></button>`).join('')}</div>
+  <div class="mgrid">${(groups[mcat]||[]).map(btn).join('')}</div>`;
 }
 document.addEventListener('scroll',e=>{if(e.target&&e.target.id==='mcols')mcolsLeft=e.target.scrollLeft;},true);
 const draftOf=id=>drafts[id]||(drafts[id]=[]);
@@ -742,6 +753,7 @@ document.addEventListener('click',e=>{
     l.forEach(i=>{const q=Math.min(pq[i.id]||0,i.qty);if(q>0){parts.push({id:i.id,qty:q});items.push({...i,qty:q});}});
     if(items.length)inv={type:'cafe',dev:tblName(id)+' (جزء)',id,parts,ms:0,mins:0,timeCost:0,items};
   }
+  else if(a==='mcat'){mcat=id;msq='';}
   else if(a==='cdel'){const l=listFor(selTable);const f=l&&l.find(x=>x.id===id);if(f)l.splice(l.indexOf(f),1);}
   else if(a==='csugar'){const l=listFor(selTable),f=l&&l.find(x=>x.id===id);if(f){if(f.sugar===b.dataset.v)delete f.sugar;else f.sugar=b.dataset.v;}}
   else if(a==='dclear'){drafts[id]=[];}

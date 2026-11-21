@@ -61,15 +61,12 @@ html[data-theme="dark"] .btn.g{color:#06210f}
 .chip.on b{color:var(--accent-fg)}
 .opts{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0;padding:8px;border:1px dashed var(--line);border-radius:10px}
 .opts input{flex:1;min-width:140px}
-.cafe{display:grid;grid-template-columns:116px minmax(0,1fr);gap:10px;align-items:start;font-size:17px}
-.cafe .tbls{display:flex;flex-direction:column;gap:6px;max-height:calc(100vh - 170px);overflow-y:auto;position:sticky;top:8px}
-.cafe .tbl{width:100%;padding:8px 10px;font-size:16px}
-.cafe .tbl b{font-size:13px}
-.cafe .chip{font-size:17px;padding:8px 14px}
-.cafe .it{font-size:17px}
-.cafe .note{font-size:14px}
+.tpick{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}.tpick label{flex:1;min-width:140px;font-size:17px}.tpick input{font-size:26px;font-weight:700;text-align:center;width:100%}
+.cmain .chip{font-size:17px;padding:8px 14px}
+.cmain .it{font-size:17px}
+.cmain .note{font-size:14px}
 .cmain{display:grid;gap:10px;min-width:0}
-@media(min-width:900px){.cafe{grid-template-columns:170px minmax(0,1fr)}.cmain{grid-template-columns:minmax(0,1fr) 360px;align-items:start}.cmain .ord{position:sticky;top:8px}}
+@media(min-width:900px){.cmain{grid-template-columns:minmax(0,1fr) 360px;align-items:start}.cmain .ord{position:sticky;top:8px}}
 .chip b{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:500}
 .items{display:flex;flex-direction:column;gap:4px;font-size:14px}
 .it{display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -356,19 +353,35 @@ function viewDevices(){
   return `<div class="note" style="margin-bottom:10px">${n} جهاز شغال من ${S.devices.length}</div><div class="grid">${S.devices.map(deviceCard).join('')}</div>`;}
 
 function tblTotal(id){return itemsTotal(id==='cafe'?S.cart:(S.orders[id]||[]));}
-function viewCafe(){
+let tnumTxt='';
+const digitsOf=x=>{const m=String(x).match(/\d+/);return m?String(+m[0]):'';};
+function findTable(txt){
+  const n=digitsOf(txt);if(!n)return null;
+  return S.tables.find(t=>digitsOf(t.name)===n)||S.tables[+n-1]||null;
+}
+function cafeMain(){
   const all=[{id:'cafe',name:'تيك أواي'},...S.tables.map(t=>({id:t.id,name:t.name}))];
   if(!all.some(t=>t.id===selTable))selTable=all[0].id;
   const cur=all.find(t=>t.id===selTable);
   const list=listFor(selTable)||[];
   const t=itemsTotal(list);
-  const busy=all.filter(x=>tblTotal(x.id)>0).length;
-  return `<div class="note" style="margin-bottom:8px">${busy} طلب مفتوح · ${S.tables.length} ترابيزة</div>
-  <div class="cafe"><div class="tbls">${all.map(x=>{const tt=tblTotal(x.id);return `<button class="tbl ${tt?'busy':''}" data-a="seltable" data-id="${x.id}" aria-pressed="${selTable===x.id}"><span>${esc(x.name)}</span><b>${tt?money(tt):'فاضية'}</b></button>`;}).join('')}</div>
-  <div class="cmain"><div class="card"><div class="name">${esc(cur.name)} · المنيو</div><div class="sub" style="font-size:15px"><span>${list.reduce((a,i)=>a+i.qty,0)} صنف في الطلب</span><b>${money(t)}</b></div>${optBar()}${menuChips(selTable)}</div>
+  return `<div class="card"><div class="name">${esc(cur.name)} · المنيو</div><div class="sub" style="font-size:15px"><span>${list.reduce((a,i)=>a+i.qty,0)} صنف في الطلب</span><b>${money(t)}</b></div>${optBar()}${menuChips(selTable)}</div>
   <div class="card ord"><div class="name">طلب ${esc(cur.name)}</div>${itemsList(list,selTable)}
     <div class="total"><span>الإجمالي</span><span>${money(t)}</span></div>
-    <div class="row"><button class="btn g" data-a="stop" data-id="${selTable}" ${t?'':'disabled'}>تحصيل</button><button class="btn x" data-a="clearcart" data-id="${selTable}" ${list.length?'':'disabled'}>مسح الطلب</button></div></div></div></div>`;}
+    <div class="row"><button class="btn" data-a="printorder" data-id="${selTable}" ${list.length?'':'disabled'}>طباعة الأوردر</button></div>
+    <div class="row" style="margin-top:8px"><button class="btn g" data-a="stop" data-id="${selTable}" ${t?'':'disabled'}>تحصيل / طباعة الدفع</button><button class="btn x" data-a="clearcart" data-id="${selTable}" ${list.length?'':'disabled'}>مسح الطلب</button></div></div>`;
+}
+function viewCafe(){
+  const all=[{id:'cafe',name:'تيك أواي'},...S.tables.map(t=>({id:t.id,name:t.name}))];
+  if(!all.some(t=>t.id===selTable))selTable=all[0].id;
+  const open=all.filter(x=>tblTotal(x.id)>0);
+  const curT=S.tables.find(t=>t.id===selTable);
+  tnumTxt=curT?digitsOf(curT.name):'';
+  return `<form class="tpick" id="tform"><label>رقم الترابيزة<input id="tnum" type="number" inputmode="numeric" min="1" value="" placeholder="${curT?'الحالية: '+digitsOf(curT.name):selTable==='cafe'?'تيك أواي':'اكتب الرقم'}" autocomplete="off"></label><button class="btn p" type="submit" style="flex:none">فتح</button><button class="btn ${selTable==='cafe'?'p':''}" type="button" data-a="seltable" data-id="cafe" style="flex:none">تيك أواي</button></form>
+  <div class="note" id="tmsg" style="margin:4px 0 8px">${S.tables.length} ترابيزة · ${open.length} طلب مفتوح</div>
+  ${open.length?`<div class="chips" style="margin-bottom:10px"><span class="note">مفتوح:</span>${open.map(x=>`<button class="chip ${selTable===x.id?'on':''}" data-a="seltable" data-id="${x.id}">${esc(x.id==='cafe'?'تيك أواي':(digitsOf(x.name)||x.name))} <b>${money(tblTotal(x.id))}</b></button>`).join('')}</div>`:''}
+  <div class="cmain" id="cmain">${cafeMain()}</div>`;
+}
 
 let histMonth=dayKey(Date.now()).slice(0,7);
 function shiftDay(k,n){const d=new Date(k+'T12:00:00');d.setDate(d.getDate()+n);return dayKey(d.getTime());}
@@ -634,6 +647,10 @@ document.addEventListener('click',e=>{
     if(armed==='cl'+id){armed=null;if(dbx)dbx.doc('closings/'+id).delete().catch(()=>{closErr=true;softRender();});closings=closings.filter(x=>x.id!==id);}
     else armed='cl'+id;
     render();return;}
+  else if(a==='printorder'){
+    const l=listFor(id)||[];const nm=id==='cafe'?'تيك أواي':((S.tables.find(x=>x.id===id)||{}).name||id);
+    if(l.length)pHTML=orderHTML(nm,l);
+  }
   else if(a==='printclose'){
     const c=id==='live'?Object.assign(summarize(dayKey(now)),{ts:now,by:((auth.currentUser||{}).email)||''}):closings.find(x=>x.id===id);
     if(c)pHTML=closeReceiptHTML(c);
@@ -668,7 +685,13 @@ document.addEventListener('change',e=>{
   save();
 });
 document.addEventListener('input',e=>{
-  const t=e.target;if(t.dataset&&t.dataset.f==='onote'){opt.note=t.value;return;}if(!inv||(t.id!=='dval'&&t.id!=='dtype'))return;
+  const t=e.target;
+  if(t.id==='tnum'){
+    const tb=findTable(t.value),msg=document.getElementById('tmsg');
+    if(tb){selTable=tb.id;document.getElementById('cmain').innerHTML=cafeMain();if(msg)msg.textContent=tb.name;}
+    else if(msg)msg.textContent=t.value?'مفيش ترابيزة بالرقم ده':'اكتب رقم الترابيزة';
+    return;
+  }if(t.dataset&&t.dataset.f==='onote'){opt.note=t.value;return;}if(!inv||(t.id!=='dval'&&t.id!=='dtype'))return;
   if(t.id==='dval')inv.dval=t.value;else inv.dtype=t.value;
   const dd=invDisc();
   document.getElementById('invtot').textContent=money(invSub()-dd);
@@ -676,6 +699,7 @@ document.addEventListener('input',e=>{
   document.getElementById('invdisc').textContent='-'+money(dd);
 });
 document.addEventListener('submit',e=>{
+  if(e.target.id==='tform'){e.preventDefault();const tb=findTable(document.getElementById('tnum').value);if(tb){selTable=tb.id;}document.activeElement&&document.activeElement.blur&&document.activeElement.blur();render();return;}
   if(e.target.id==='closeform'){
     e.preventDefault();
     const now=Date.now(),c=summarize(dayKey(now)),cashV=document.getElementById('ccash').value,note=document.getElementById('cnote').value.trim();
@@ -701,7 +725,7 @@ document.addEventListener('focusout',()=>{
 function receiptHTML(s){
   const tot=s.timeCost+itemsTotal(s.items)-(s.disc||0),d=new Date(s.ts);
   const dc=s.disc>0?`<tr><td>خصم</td><td>-${Math.round(s.disc)}</td></tr>`:'';
-  const rows=s.items.map(i=>`<tr><td>${esc(i.name)} × ${i.qty}${optTxt(i)?`<br><small>${esc(optTxt(i))}</small>`:''}</td><td>${Math.round(i.price*i.qty)}</td></tr>`).join('');
+  const rows=s.items.map(i=>`<tr><td>${esc(i.name)} × ${i.qty}</td><td>${Math.round(i.price*i.qty)}</td></tr>`).join('');
   const ps=s.type==='ps'?`<tr><td>وقت اللعب (${Math.round(s.mins)} د)</td><td>${Math.round(s.timeCost)}</td></tr>`:'';
   return `<div class="rc"><img class="logo" src="${LOGO_MARK}" alt="CR7" style="width:30mm;margin:0 auto 4px"><div class="rm">${d.toLocaleDateString('ar-EG')} · ${timeStr(s.ts)}</div><div class="rm">${esc(s.dev)}${s.id?' · #'+esc(String(s.id).slice(0,5)):''}</div><table>${ps}${rows}${dc}</table><div class="rt"><span>الإجمالي</span><span>${Math.round(tot)} ج.م</span></div><div class="rm">شكرًا لزيارتكم</div></div>`;
 }
@@ -712,6 +736,11 @@ function closeReceiptHTML(c){
   <table><tr><td><b>بلايستيشن</b></td><td><b>${fmtH(c.mins)}</b></td></tr>${dv.map(([n,x])=>`<tr><td>· ${esc(n)}</td><td>${fmtH(x.mins)}</td></tr>`).join('')}${its.map(([n,q])=>`<tr><td>${esc(n)}</td><td><b>${q}</b></td></tr>`).join('')}</table>
   <table><tr><td>بلايستيشن</td><td>${c.ps}</td></tr><tr><td>كافيه</td><td>${c.cf}</td></tr><tr><td>خصومات</td><td>-${c.ds}</td></tr><tr><td>عدد الفواتير</td><td>${c.n}</td></tr>${c.cash!=null?`<tr><td>الموجود في الدرج</td><td>${c.cash}</td></tr><tr><td>الفرق</td><td>${diff>0?'+':''}${diff}</td></tr>`:''}</table>
   <div class="rt"><span>الإجمالي</span><span>${c.total} ج.م</span></div>${c.note?`<div class="rm">ملاحظة: ${esc(c.note)}</div>`:''}</div>`;
+}
+function orderHTML(name,list){
+  const d=new Date(),n=list.reduce((a,i)=>a+i.qty,0);
+  return `<div class="rc"><h2>أوردر</h2><div class="rm" style="font-size:18px"><b>${esc(name)}</b></div><div class="rm">${d.toLocaleDateString('ar-EG')} · ${timeStr(d.getTime())}</div>
+  <table>${list.map(i=>`<tr><td style="font-size:16px"><b>${i.qty} ×</b> ${esc(i.name)}${optTxt(i)?`<br><small style="font-size:13px">${esc(optTxt(i))}</small>`:''}</td></tr>`).join('')}</table><div class="rm">${n} صنف</div></div>`;
 }
 let pHTML=null;
 function printHTML(h){document.getElementById('receipt').innerHTML=h;setTimeout(()=>window.print(),80);}

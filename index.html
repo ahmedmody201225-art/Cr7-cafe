@@ -62,6 +62,13 @@ html[data-theme="dark"] .btn.g{color:#06210f}
 .opts{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0;padding:8px;border:1px dashed var(--line);border-radius:10px}
 .goord{position:sticky;bottom:10px;width:100%;margin-top:10px;box-shadow:0 4px 14px rgba(0,0,0,.25);font-size:17px;padding:12px}
 @media(min-width:900px){.goord{display:none}}
+.mcols{display:flex;gap:10px;overflow-x:auto;align-items:flex-start;padding-bottom:6px;scroll-snap-type:x proximity}
+.mcol{flex:1 0 150px;min-width:150px;display:flex;flex-direction:column;gap:4px;scroll-snap-align:start}
+.mh{font-weight:700;background:var(--accent);color:var(--accent-fg);border-radius:8px;padding:6px 10px;text-align:center;position:sticky;top:0}
+.mi{display:flex;justify-content:space-between;gap:6px;align-items:center;text-align:start;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:9px 10px;font-size:16px}
+.mi b{color:var(--muted);font-weight:600;font-variant-numeric:tabular-nums}
+.mi:active{background:var(--soft)}
+.cmain .it{flex-wrap:wrap;gap:4px}.cmain .it .q{flex-wrap:wrap}
 .dl{border-bottom:1px solid var(--line);margin-bottom:4px}
 .opts input{flex:1;min-width:140px}
 .tpick{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}.tpick label{flex:1;min-width:140px;font-size:17px}.tpick input{font-size:26px;font-weight:700;text-align:center;width:100%}
@@ -380,7 +387,16 @@ function viewOpen(){
 }
 
 /* ---- orders page: draft per table, then one confirm button ---- */
-const drafts={};let flash='';
+const drafts={};let flash='',msq='',mcolsLeft=0;
+const norm=x=>String(x||'').toLowerCase().replace(/[\u064B-\u0652\u0640]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').trim();
+function menuCols(target,act,q){
+  const nq=norm(q),groups={};
+  S.menu.forEach(m=>{if(nq&&!norm(m.name).includes(nq))return;const c=m.cat||'أخرى';(groups[c]=groups[c]||[]).push(m);});
+  const order=Object.keys(groups).sort((a,b)=>(a==='أخرى')-(b==='أخرى'));
+  if(!order.length)return '<div class="empty">مفيش مشروب بالاسم ده</div>';
+  return order.map(c=>`<div class="mcol"><div class="mh">${esc(c)}</div>${groups[c].map(m=>`<button class="mi" data-a="${act}" data-t="${target}" data-id="${m.id}"><span>${esc(m.name)}</span><b>${m.price}</b></button>`).join('')}</div>`).join('');
+}
+document.addEventListener('scroll',e=>{if(e.target&&e.target.id==='mcols')mcolsLeft=e.target.scrollLeft;},true);
 const draftOf=id=>drafts[id]||(drafts[id]=[]);
 function draftHTML(id){
   const d=draftOf(id);
@@ -391,13 +407,20 @@ function draftHTML(id){
 function cafeMain(){
   const id=selTable,name=tblName(id),list=listFor(id)||[],d=draftOf(id);
   const dn=d.reduce((a,i)=>a+i.qty,0),dt=itemsTotal(d),t=itemsTotal(list);
-  return `<div class="card"><div class="name">${esc(name)} · المنيو</div>${menuChips(id,'dadd')}${dn?`<button class="btn p goord" data-a="goord">شوف الطلب (${dn}) · ${money(dt)} ↓</button>`:''}</div>
-  <div class="card ord" id="ordcard"><div class="name">طلب ${esc(name)}</div>${flash?`<div class="banner" style="margin:6px 0">${esc(flash)}</div>`:''}
+  const conf=list.length?`<div class="name" style="margin-top:16px">اتأكد على ${esc(name)} · عدّل لو في غلط</div>
+    <div class="items">${list.map(i=>`<div class="dl"><div class="it"><span><b>${esc(i.name)}</b></span><span class="q"><button data-a="dec" data-t="${id}" data-id="${i.id}" aria-label="تقليل">−</button><b>${i.qty}</b><button data-a="inc" data-t="${id}" data-id="${i.id}" aria-label="زيادة">+</button><span style="min-width:56px;text-align:end">${money(i.price*i.qty)}</span><button class="btn x s" data-a="cdel" data-id="${i.id}" aria-label="حذف">حذف</button></span></div>
+      <div class="opts" style="margin:4px 0 8px"><span class="note">السكر:</span>${['ساده','مظبوط','زيادة'].map(v=>`<button class="chip ${i.sugar===v?'on':''}" data-a="csugar" data-id="${i.id}" data-v="${v}">${v}</button>`).join('')}<input data-f="cnote" data-id="${i.id}" placeholder="ملاحظات" value="${esc(i.note||'')}" aria-label="ملاحظات"></div></div>`).join('')}</div>
+    <div class="total"><span>حساب ${esc(name)}</span><span>${money(t)}</span></div>
+    <div class="row"><button class="btn" data-a="printorder" data-id="${id}">طباعة الأوردر</button><button class="btn g" data-a="stop" data-id="${id}">تحصيل / طباعة الدفع</button></div>`:'';
+  return `<div class="card"><div class="name">${esc(name)} · المنيو</div>
+    <input id="msearch" type="search" placeholder="🔍 ابحث عن مشروب" value="${esc(msq)}" autocomplete="off" aria-label="بحث عن مشروب" style="width:100%;font-size:17px;margin:6px 0">
+    <div class="mcols" id="mcols">${menuCols(id,'dadd',msq)}</div>${dn?`<button class="btn p goord" data-a="goord">شوف الطلب (${dn}) · ${money(dt)} ↓</button>`:''}</div>
+  <div class="card ord" id="ordcard"><div class="name">طلب ${esc(name)} الجديد</div>${flash?`<div class="banner" style="margin:6px 0">${esc(flash)}</div>`:''}
     ${draftHTML(id)}
     <div class="total"><span>الطلب الجديد</span><span>${money(dt)}</span></div>
     <button class="btn p" data-a="confirmorder" data-id="${id}" ${dn?'':'disabled'} style="width:100%;font-size:18px;padding:12px">تأكيد الطلب وطباعته (${dn})</button>
     <div class="row" style="margin-top:8px"><button class="btn x s" data-a="dclear" data-id="${id}" ${dn?'':'disabled'}>مسح الطلب الجديد</button></div>
-    ${list.length?`<div class="note" style="margin-top:12px">اتأكد قبل كده على ${esc(name)}: ${list.reduce((a,i)=>a+i.qty,0)} صنف · ${money(t)}</div><div class="row" style="margin-top:6px"><button class="btn s" data-a="tab" data-id="open">شوف الحساب</button></div>`:''}
+    ${conf}
   </div>`;
 }
 function viewCafe(){
@@ -585,6 +608,7 @@ function render(){
   <nav>${tabsFor().map(([k,l])=>`<button data-a="tab" data-id="${k}" aria-current="${tab===k}">${l}${k==='open'&&openList().length?' ('+openList().length+')':''}</button>`).join('')}</nav>
   ${banners()}
   <main>${permErr?'<div class="empty">السيستم مقفول لحد ما قواعد Firestore تتظبط. بعد ما تظبطها حدّث الصفحة.</div>':(ready()||slow)?views[tab]():'<div class="empty">جاري تحميل البيانات…</div>'}</main>${viewInvoice()}${viewAlert()}`;
+  const mc=document.getElementById('mcols');if(mc)mc.scrollLeft=mcolsLeft;
   tick();updStatus();
 }
 function tick(){
@@ -680,6 +704,8 @@ document.addEventListener('click',e=>{
   else if(a==='ddec'){const d=draftOf(selTable),f=d.find(x=>x.id===id);if(f){f.qty--;if(f.qty<=0)d.splice(d.indexOf(f),1);}}
   else if(a==='dsugar'){const f=draftOf(selTable).find(x=>x.id===id);if(f){if(f.sugar===b.dataset.v)delete f.sugar;else f.sugar=b.dataset.v;}}
   else if(a==='goord'){setTimeout(()=>{const e=document.getElementById('ordcard');if(e)e.scrollIntoView({behavior:'smooth',block:'start'});},60);}
+  else if(a==='cdel'){const l=listFor(selTable);const f=l&&l.find(x=>x.id===id);if(f)l.splice(l.indexOf(f),1);}
+  else if(a==='csugar'){const l=listFor(selTable),f=l&&l.find(x=>x.id===id);if(f){if(f.sugar===b.dataset.v)delete f.sugar;else f.sugar=b.dataset.v;}}
   else if(a==='dclear'){drafts[id]=[];}
   else if(a==='confirmorder'){
     const d=draftOf(id);
@@ -720,6 +746,7 @@ document.addEventListener('change',e=>{
   const f=t.dataset&&t.dataset.f;if(!f)return;
   if(f==='onote'){opt.note=t.value;return;}
   if(f==='dnote')return;
+  if(f==='cnote'){const l=listFor(selTable),it=l&&l.find(x=>x.id===t.dataset.id);if(it){if(t.value.trim())it.note=t.value.trim();else delete it.note;save();}return;}
   if(f==='dur'){pick[t.dataset.id]=t.value==='c'?'c':+t.value;render();return;}
   if(f==='durc'){pickC[t.dataset.id]=Math.max(0,Math.round(+t.value||0));return;}
   if(f==='rateS'||f==='rateD')S[f]=Math.max(0,+t.value||0);
@@ -738,6 +765,8 @@ document.addEventListener('input',e=>{
     else if(msg)msg.textContent=t.value?'اكتب رقم الترابيزة':'اكتب أي رقم ترابيزة';
     return;
   }
+  if(t.id==='msearch'){msq=t.value;const mc=document.getElementById('mcols');if(mc)mc.innerHTML=menuCols(selTable,'dadd',msq);return;}
+  if(t.dataset&&t.dataset.f==='cnote'){const l=listFor(selTable),it=l&&l.find(x=>x.id===t.dataset.id);if(it){if(t.value.trim())it.note=t.value.trim();else delete it.note;}return;}
   if(t.dataset&&t.dataset.f==='dnote'){const l=draftOf(selTable).find(x=>x.id===t.dataset.id);if(l){if(t.value.trim())l.note=t.value.trim();else delete l.note;}return;}if(t.dataset&&t.dataset.f==='onote'){opt.note=t.value;return;}if(!inv||(t.id!=='dval'&&t.id!=='dtype'))return;
   if(t.id==='dval')inv.dval=t.value;else inv.dtype=t.value;
   const dd=invDisc();

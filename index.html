@@ -60,6 +60,9 @@ html[data-theme="dark"] .btn.g{color:#06210f}
 .chip.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
 .chip.on b{color:var(--accent-fg)}
 .opts{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0;padding:8px;border:1px dashed var(--line);border-radius:10px}
+.goord{position:sticky;bottom:10px;width:100%;margin-top:10px;box-shadow:0 4px 14px rgba(0,0,0,.25);font-size:17px;padding:12px}
+@media(min-width:900px){.goord{display:none}}
+.dl{border-bottom:1px solid var(--line);margin-bottom:4px}
 .opts input{flex:1;min-width:140px}
 .tpick{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}.tpick label{flex:1;min-width:140px;font-size:17px}.tpick input{font-size:26px;font-weight:700;text-align:center;width:100%}
 .cmain .chip{font-size:17px;padding:8px 14px}
@@ -314,11 +317,11 @@ function addTo(list,m,sugar,note){
 }
 function decFrom(list,id){const f=list.find(i=>i.id===id);if(!f)return;f.qty--;if(f.qty<=0)list.splice(list.indexOf(f),1);}
 
-function menuChips(target){
+function menuChips(target,act){act=act||'add';
   const groups={};S.menu.forEach(m=>{const c=m.cat||'أخرى';(groups[c]=groups[c]||[]).push(m);});
   const order=Object.keys(groups).sort((a,b)=>(a==='أخرى')-(b==='أخرى'));
   const one=order.length<2;
-  return order.map(c=>`${one?'':`<div class="note" style="margin:10px 0 4px"><b>${esc(c)}</b></div>`}<div class="chips">${groups[c].map(m=>`<button class="chip" data-a="add" data-t="${target}" data-id="${m.id}">${esc(m.name)} <b>${m.price}</b></button>`).join('')}</div>`).join('');}
+  return order.map(c=>`${one?'':`<div class="note" style="margin:10px 0 4px"><b>${esc(c)}</b></div>`}<div class="chips">${groups[c].map(m=>`<button class="chip" data-a="${act}" data-t="${target}" data-id="${m.id}">${esc(m.name)} <b>${m.price}</b></button>`).join('')}</div>`).join('');}
 function itemsList(list,target){
   if(!list.length)return '<div class="note">مفيش طلبات لسه</div>';
   return `<div class="items">${list.map(i=>`<div class="it"><span>${esc(i.name)}${optTxt(i)?`<div class="note">${esc(optTxt(i))}</div>`:''}</span><span class="q"><button data-a="dec" data-t="${target}" data-id="${i.id}" aria-label="تقليل">−</button><b>${i.qty}</b><button data-a="inc" data-t="${target}" data-id="${i.id}" aria-label="زيادة">+</button><span style="min-width:56px;text-align:end">${money(i.price*i.qty)}</span></span></div>`).join('')}</div>`;}
@@ -353,8 +356,17 @@ function viewDevices(){
   return `<div class="note" style="margin-bottom:10px">${n} جهاز شغال من ${S.devices.length}</div><div class="grid">${S.devices.map(deviceCard).join('')}</div>`;}
 
 function tblTotal(id){return itemsTotal(id==='cafe'?S.cart:(S.orders[id]||[]));}
+const tblName=id=>id==='cafe'?'تيك أواي':((S.tables.find(t=>t.id===id)||{}).name||'ترابيزة '+String(id).slice(1));
+const digitsOf=x=>{const m=String(x).match(/\d+/);return m?String(+m[0]):'';};
+function tblIdFor(txt){
+  const n=digitsOf(txt);if(!n)return null;
+  const lg=S.tables.find(t=>digitsOf(t.name)===n);
+  return lg?lg.id:'t'+n;
+}
 function openList(){
-  return [{id:'cafe',name:'تيك أواي'},...S.tables.map(t=>({id:t.id,name:t.name}))].filter(x=>(listFor(x.id)||[]).length>0);
+  const ids=Object.keys(S.orders).filter(k=>(S.orders[k]||[]).length>0).sort((a,b)=>(+digitsOf(tblName(a))||0)-(+digitsOf(tblName(b))||0));
+  if(S.cart.length)ids.unshift('cafe');
+  return ids.map(id=>({id,name:tblName(id)}));
 }
 function viewOpen(){
   const L=openList(),grand=L.reduce((a,x)=>a+tblTotal(x.id),0);
@@ -363,35 +375,35 @@ function viewOpen(){
   ${L.length?`<div class="grid">${L.map(x=>{const l=listFor(x.id),t=tblTotal(x.id);return `<div class="card"><div class="top"><span class="name">${esc(x.name)}</span><span class="badge d">${l.reduce((a,i)=>a+i.qty,0)} صنف</span></div>
     <div class="items">${l.map(i=>`<div class="it"><span>${i.qty} × ${esc(i.name)}${optTxt(i)?`<div class="note">${esc(optTxt(i))}</div>`:''}</span><span>${money(i.price*i.qty)}</span></div>`).join('')}</div>
     <div class="total"><span>الحساب</span><span>${money(t)}</span></div>
-    <div class="row"><button class="btn" data-a="gotbl" data-id="${x.id}">تعديل الطلب</button><button class="btn" data-a="printorder" data-id="${x.id}">طباعة الأوردر</button></div>
+    <div class="row"><button class="btn" data-a="gotbl" data-id="${x.id}">إضافة / تعديل</button><button class="btn" data-a="printorder" data-id="${x.id}">طباعة الأوردر</button></div>
     <button class="btn g" data-a="stop" data-id="${x.id}" style="margin-top:8px;width:100%">تحصيل / طباعة الدفع</button></div>`;}).join('')}</div>`:'<div class="empty">مفيش حسابات مفتوحة دلوقتي</div>'}`;
 }
-let tnumTxt='';
-const digitsOf=x=>{const m=String(x).match(/\d+/);return m?String(+m[0]):'';};
-function findTable(txt){
-  const n=digitsOf(txt);if(!n)return null;
-  return S.tables.find(t=>digitsOf(t.name)===n)||S.tables[+n-1]||null;
+
+/* ---- orders page: draft per table, then one confirm button ---- */
+const drafts={};let flash='';
+const draftOf=id=>drafts[id]||(drafts[id]=[]);
+function draftHTML(id){
+  const d=draftOf(id);
+  if(!d.length)return '<div class="note">اختار المشروبات من المنيو فوق، وبعدين حدد السكر والملاحظات لكل واحد هنا.</div>';
+  return `<div class="items">${d.map(i=>`<div class="dl"><div class="it"><span><b>${esc(i.name)}</b></span><span class="q"><button data-a="ddec" data-id="${i.id}" aria-label="تقليل">−</button><b>${i.qty}</b><button data-a="dinc" data-id="${i.id}" aria-label="زيادة">+</button><span style="min-width:56px;text-align:end">${money(i.price*i.qty)}</span></span></div>
+    <div class="opts" style="margin:4px 0 8px"><span class="note">السكر:</span>${['ساده','مظبوط','زيادة'].map(v=>`<button class="chip ${i.sugar===v?'on':''}" data-a="dsugar" data-id="${i.id}" data-v="${v}">${v}</button>`).join('')}<input data-f="dnote" data-id="${i.id}" placeholder="ملاحظات" value="${esc(i.note||'')}" aria-label="ملاحظات"></div></div>`).join('')}</div>`;
 }
 function cafeMain(){
-  const all=[{id:'cafe',name:'تيك أواي'},...S.tables.map(t=>({id:t.id,name:t.name}))];
-  if(!all.some(t=>t.id===selTable))selTable=all[0].id;
-  const cur=all.find(t=>t.id===selTable);
-  const list=listFor(selTable)||[];
-  const t=itemsTotal(list);
-  return `<div class="card"><div class="name">${esc(cur.name)} · المنيو</div><div class="sub" style="font-size:15px"><span>${list.reduce((a,i)=>a+i.qty,0)} صنف في الطلب</span><b>${money(t)}</b></div>${optBar()}${menuChips(selTable)}</div>
-  <div class="card ord"><div class="name">طلب ${esc(cur.name)}</div>${itemsList(list,selTable)}
-    <div class="total"><span>الإجمالي</span><span>${money(t)}</span></div>
-    <div class="row"><button class="btn" data-a="printorder" data-id="${selTable}" ${list.length?'':'disabled'}>طباعة الأوردر</button></div>
-    <div class="row" style="margin-top:8px"><button class="btn g" data-a="stop" data-id="${selTable}" ${t?'':'disabled'}>تحصيل / طباعة الدفع</button><button class="btn x" data-a="clearcart" data-id="${selTable}" ${list.length?'':'disabled'}>مسح الطلب</button></div></div>`;
+  const id=selTable,name=tblName(id),list=listFor(id)||[],d=draftOf(id);
+  const dn=d.reduce((a,i)=>a+i.qty,0),dt=itemsTotal(d),t=itemsTotal(list);
+  return `<div class="card"><div class="name">${esc(name)} · المنيو</div>${menuChips(id,'dadd')}${dn?`<button class="btn p goord" data-a="goord">شوف الطلب (${dn}) · ${money(dt)} ↓</button>`:''}</div>
+  <div class="card ord" id="ordcard"><div class="name">طلب ${esc(name)}</div>${flash?`<div class="banner" style="margin:6px 0">${esc(flash)}</div>`:''}
+    ${draftHTML(id)}
+    <div class="total"><span>الطلب الجديد</span><span>${money(dt)}</span></div>
+    <button class="btn p" data-a="confirmorder" data-id="${id}" ${dn?'':'disabled'} style="width:100%;font-size:18px;padding:12px">تأكيد الطلب وطباعته (${dn})</button>
+    <div class="row" style="margin-top:8px"><button class="btn x s" data-a="dclear" data-id="${id}" ${dn?'':'disabled'}>مسح الطلب الجديد</button></div>
+    ${list.length?`<div class="note" style="margin-top:12px">اتأكد قبل كده على ${esc(name)}: ${list.reduce((a,i)=>a+i.qty,0)} صنف · ${money(t)}</div><div class="row" style="margin-top:6px"><button class="btn s" data-a="tab" data-id="open">شوف الحساب</button></div>`:''}
+  </div>`;
 }
 function viewCafe(){
-  const all=[{id:'cafe',name:'تيك أواي'},...S.tables.map(t=>({id:t.id,name:t.name}))];
-  if(!all.some(t=>t.id===selTable))selTable=all[0].id;
-  const open=all.filter(x=>tblTotal(x.id)>0);
-  const curT=S.tables.find(t=>t.id===selTable);
-  tnumTxt=curT?digitsOf(curT.name):'';
-  return `<form class="tpick" id="tform"><label>رقم الترابيزة<input id="tnum" type="number" inputmode="numeric" min="1" value="" placeholder="${curT?'الحالية: '+digitsOf(curT.name):selTable==='cafe'?'تيك أواي':'اكتب الرقم'}" autocomplete="off"></label><button class="btn p" type="submit" style="flex:none">فتح</button><button class="btn ${selTable==='cafe'?'p':''}" type="button" data-a="seltable" data-id="cafe" style="flex:none">تيك أواي</button></form>
-  <div class="note" id="tmsg" style="margin:4px 0 8px">${S.tables.length} ترابيزة · ${open.length} طلب مفتوح</div>
+  const open=openList();
+  return `<form class="tpick" id="tform"><label>رقم الترابيزة<input id="tnum" type="number" inputmode="numeric" min="1" value="" placeholder="${selTable==='cafe'?'تيك أواي':'الحالية: '+(digitsOf(tblName(selTable))||'')}" autocomplete="off"></label><button class="btn p" type="submit" style="flex:none">فتح</button><button class="btn ${selTable==='cafe'?'p':''}" type="button" data-a="seltable" data-id="cafe" style="flex:none">تيك أواي</button></form>
+  <div class="note" id="tmsg" style="margin:4px 0 8px">${esc(tblName(selTable))} · ${open.length} حساب مفتوح · اكتب أي رقم ترابيزة</div>
   ${open.length?`<div class="chips" style="margin-bottom:10px"><span class="note">مفتوح:</span>${open.map(x=>`<button class="chip ${selTable===x.id?'on':''}" data-a="seltable" data-id="${x.id}">${esc(x.id==='cafe'?'تيك أواي':(digitsOf(x.name)||x.name))} <b>${money(tblTotal(x.id))}</b></button>`).join('')}</div>`:''}
   <div class="cmain" id="cmain">${cafeMain()}</div>`;
 }
@@ -450,8 +462,7 @@ function viewSettings(){
   <div class="grid">${S.devices.map(d=>`<div class="form"><input data-f="dev" data-id="${d.id}" value="${esc(d.name)}" aria-label="اسم الجهاز">${S.active[d.id]?'<span class="note">شغال</span>':`<button class="btn x s" data-a="deldev" data-id="${d.id}">حذف</button>`}</div>`).join('')}</div>
   <div class="row" style="margin-top:10px"><button class="btn s" data-a="adddev">+ إضافة جهاز</button></div>
   <h2>الترابيزات</h2>
-  <div class="grid">${S.tables.map(t=>`<div class="form"><input data-f="tbl" data-id="${t.id}" value="${esc(t.name)}" aria-label="اسم الترابيزة">${tblTotal(t.id)?'<span class="note">عليها طلب</span>':`<button class="btn x s" data-a="deltable" data-id="${t.id}">حذف</button>`}</div>`).join('')}</div>
-  <div class="row" style="margin-top:10px"><button class="btn s" data-a="addtable">+ إضافة ترابيزة</button><button class="btn s" data-a="tables20">خليها 20 ترابيزة</button></div>
+  <div class="note">الترابيزات من غير حد: اكتب أي رقم في صفحة الطلبات وهيتفتح.</div>
   <h2>المنيو</h2>
   <div class="grid">${S.menu.map(m=>`<div class="form"><input data-f="mname" data-id="${m.id}" value="${esc(m.name)}" aria-label="اسم الصنف"><input data-f="mprice" data-id="${m.id}" type="number" min="0" value="${m.price}" style="max-width:90px" aria-label="السعر"><input data-f="mcat" data-id="${m.id}" value="${esc(m.cat||'')}" placeholder="القسم" style="max-width:110px" aria-label="القسم"><button class="btn x s" data-a="delmenu" data-id="${m.id}">حذف</button></div>`).join('')}</div>
   <form class="form" id="menuform" style="margin-top:12px"><label>صنف جديد<input id="mn" required></label><label>السعر<input id="mp" type="number" min="0" step="any" required inputmode="decimal"></label><label>القسم<input id="mc" placeholder="اختياري"></label><button class="btn p" type="submit">إضافة للمنيو</button></form>
@@ -621,12 +632,12 @@ document.addEventListener('click',e=>{
   else if(a==='sugar'){opt.sugar=opt.sugar===id?'':id;}
   else if(a==='dec'){const l=listFor(b.dataset.t);if(l)decFrom(l,id);}
   else if(a==='clearcart'){if(id==='cafe')S.cart=[];else delete S.orders[id];}
-  else if(a==='seltable'){selTable=id;}
+  else if(a==='seltable'){selTable=id;flash='';}
   else if(a==='tables20'){while(S.tables.length<20)S.tables.push({id:'t'+uid(),name:'ترابيزة '+(S.tables.length+1)});}
   else if(a==='addtable'){S.tables.push({id:'t'+uid(),name:'ترابيزة '+(S.tables.length+1)});}
   else if(a==='deltable'){S.tables=S.tables.filter(x=>x.id!==id);delete S.orders[id];}
   else if(a==='stop'){
-    if(id==='cafe'||id[0]==='t')inv={type:'cafe',dev:id==='cafe'?'تيك أواي':((S.tables.find(x=>x.id===id)||{}).name||id),id,ms:0,mins:0,timeCost:0,items:listFor(id).map(i=>({...i}))};
+    if(id==='cafe'||id[0]==='t')inv={type:'cafe',dev:tblName(id),id,ms:0,mins:0,timeCost:0,items:listFor(id).map(i=>({...i}))};
     else{const se=S.active[id],d=S.devices.find(x=>x.id===id);const ms=elapsed(se,now);
       inv={type:'ps',dev:d?d.name:id,id,ms,mins:ms/60000,timeCost:Math.round(timeCost(se,now)),items:se.items.map(i=>({...i}))};}
   }
@@ -660,9 +671,29 @@ document.addEventListener('click',e=>{
     if(armed==='cl'+id){armed=null;if(dbx)dbx.doc('closings/'+id).delete().catch(()=>{closErr=true;softRender();});closings=closings.filter(x=>x.id!==id);}
     else armed='cl'+id;
     render();return;}
-  else if(a==='gotbl'){selTable=id;tab='cafe';}
+  else if(a==='gotbl'){selTable=id;tab='cafe';flash='';}
+  else if(a==='dadd'){
+    const m=S.menu.find(x=>x.id===id),d=draftOf(selTable);
+    if(m){const f=d.find(x=>x.mid===m.id&&!x.sugar&&!x.note);if(f)f.qty++;else d.push({id:'l'+uid(),mid:m.id,name:m.name,price:m.price,qty:1});flash='';}
+  }
+  else if(a==='dinc'){const f=draftOf(selTable).find(x=>x.id===id);if(f)f.qty++;}
+  else if(a==='ddec'){const d=draftOf(selTable),f=d.find(x=>x.id===id);if(f){f.qty--;if(f.qty<=0)d.splice(d.indexOf(f),1);}}
+  else if(a==='dsugar'){const f=draftOf(selTable).find(x=>x.id===id);if(f){if(f.sugar===b.dataset.v)delete f.sugar;else f.sugar=b.dataset.v;}}
+  else if(a==='goord'){setTimeout(()=>{const e=document.getElementById('ordcard');if(e)e.scrollIntoView({behavior:'smooth',block:'start'});},60);}
+  else if(a==='dclear'){drafts[id]=[];}
+  else if(a==='confirmorder'){
+    const d=draftOf(id);
+    if(d.length){
+      const l=listFor(id);
+      d.forEach(n=>{const ex=l.find(x=>x.name===n.name&&x.price===n.price&&(x.sugar||'')===(n.sugar||'')&&(x.note||'')===(n.note||''));
+        if(ex)ex.qty+=n.qty;else{const it={id:'l'+uid(),name:n.name,price:n.price,qty:n.qty};if(n.sugar)it.sugar=n.sugar;if(n.note)it.note=n.note;l.push(it);}});
+      pHTML=orderHTML(tblName(id),d);
+      drafts[id]=[];
+      flash='اتبعت للحسابات واتطبع الأوردر ✓';
+    }
+  }
   else if(a==='printorder'){
-    const l=listFor(id)||[];const nm=id==='cafe'?'تيك أواي':((S.tables.find(x=>x.id===id)||{}).name||id);
+    const l=listFor(id)||[];const nm=tblName(id);
     if(l.length)pHTML=orderHTML(nm,l);
   }
   else if(a==='printclose'){
@@ -688,6 +719,7 @@ document.addEventListener('change',e=>{
   if(t.id==='rday'){reportDay=t.value||dayKey(Date.now());render();return;}
   const f=t.dataset&&t.dataset.f;if(!f)return;
   if(f==='onote'){opt.note=t.value;return;}
+  if(f==='dnote')return;
   if(f==='dur'){pick[t.dataset.id]=t.value==='c'?'c':+t.value;render();return;}
   if(f==='durc'){pickC[t.dataset.id]=Math.max(0,Math.round(+t.value||0));return;}
   if(f==='rateS'||f==='rateD')S[f]=Math.max(0,+t.value||0);
@@ -701,11 +733,12 @@ document.addEventListener('change',e=>{
 document.addEventListener('input',e=>{
   const t=e.target;
   if(t.id==='tnum'){
-    const tb=findTable(t.value),msg=document.getElementById('tmsg');
-    if(tb){selTable=tb.id;document.getElementById('cmain').innerHTML=cafeMain();if(msg)msg.textContent=tb.name;}
-    else if(msg)msg.textContent=t.value?'مفيش ترابيزة بالرقم ده':'اكتب رقم الترابيزة';
+    const id=tblIdFor(t.value),msg=document.getElementById('tmsg');
+    if(id){selTable=id;flash='';document.getElementById('cmain').innerHTML=cafeMain();if(msg)msg.textContent=tblName(id);}
+    else if(msg)msg.textContent=t.value?'اكتب رقم الترابيزة':'اكتب أي رقم ترابيزة';
     return;
-  }if(t.dataset&&t.dataset.f==='onote'){opt.note=t.value;return;}if(!inv||(t.id!=='dval'&&t.id!=='dtype'))return;
+  }
+  if(t.dataset&&t.dataset.f==='dnote'){const l=draftOf(selTable).find(x=>x.id===t.dataset.id);if(l){if(t.value.trim())l.note=t.value.trim();else delete l.note;}return;}if(t.dataset&&t.dataset.f==='onote'){opt.note=t.value;return;}if(!inv||(t.id!=='dval'&&t.id!=='dtype'))return;
   if(t.id==='dval')inv.dval=t.value;else inv.dtype=t.value;
   const dd=invDisc();
   document.getElementById('invtot').textContent=money(invSub()-dd);
@@ -713,7 +746,7 @@ document.addEventListener('input',e=>{
   document.getElementById('invdisc').textContent='-'+money(dd);
 });
 document.addEventListener('submit',e=>{
-  if(e.target.id==='tform'){e.preventDefault();const tb=findTable(document.getElementById('tnum').value);if(tb){selTable=tb.id;}document.activeElement&&document.activeElement.blur&&document.activeElement.blur();render();return;}
+  if(e.target.id==='tform'){e.preventDefault();const tid=tblIdFor(document.getElementById('tnum').value);if(tid){selTable=tid;flash='';}document.activeElement&&document.activeElement.blur&&document.activeElement.blur();render();return;}
   if(e.target.id==='closeform'){
     e.preventDefault();
     const now=Date.now(),c=summarize(dayKey(now)),cashV=document.getElementById('ccash').value,note=document.getElementById('cnote').value.trim();

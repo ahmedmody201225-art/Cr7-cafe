@@ -380,8 +380,10 @@ function viewOpen(){
   const L=openList(),grand=L.reduce((a,x)=>a+tblTotal(x.id),0);
   return `<div class="stats"><div class="stat main"><span>إجمالي الحسابات المفتوحة</span><strong>${money(grand)}</strong></div><div class="stat"><span>ترابيزات مفتوحة</span><strong>${L.length}</strong></div></div>
   <h2>الحسابات المفتوحة</h2>
-  ${L.length?`<div class="grid">${L.map(x=>{const l=listFor(x.id),t=tblTotal(x.id);return `<div class="card"><div class="top"><span class="name">${esc(x.name)}</span><span class="badge d">${l.reduce((a,i)=>a+i.qty,0)} صنف</span></div>
-    <div class="items">${l.map(i=>`<div class="it"><span>${i.qty} × ${esc(i.name)}${optTxt(i)?`<div class="note">${esc(optTxt(i))}</div>`:''}</span><span>${money(i.price*i.qty)}</span></div>`).join('')}</div>
+  ${L.length?`<div class="grid">${L.map(x=>{const l=listFor(x.id),t=tblTotal(x.id),selN=l.reduce((a,i)=>a+Math.min(pq[i.id]||0,i.qty),0),selT=l.reduce((a,i)=>a+i.price*Math.min(pq[i.id]||0,i.qty),0);return `<div class="card"><div class="top"><span class="name">${esc(x.name)}</span><span class="badge d">${l.reduce((a,i)=>a+i.qty,0)} صنف</span></div>
+    <div class="items">${l.map(i=>`<div class="dl"><div class="it"><span>${i.qty} × ${esc(i.name)}${optTxt(i)?`<div class="note">${esc(optTxt(i))}</div>`:''}</span><span>${money(i.price*i.qty)}</span></div>
+      <div class="opts" style="margin:2px 0 6px"><span class="note">حاسب لوحده:</span><span class="q"><button data-a="pqdec" data-t="${x.id}" data-id="${i.id}" aria-label="تقليل">−</button><b>${Math.min(pq[i.id]||0,i.qty)}</b><button data-a="pqinc" data-t="${x.id}" data-id="${i.id}" aria-label="زيادة">+</button></span></div></div>`).join('')}</div>
+    ${selN?`<button class="btn p" data-a="paysel" data-id="${x.id}" style="width:100%;margin:8px 0">حاسب المحدد (${selN}) · ${money(selT)}</button>`:''}
     <div class="total"><span>الحساب</span><span>${money(t)}</span></div>
     <div class="row"><button class="btn" data-a="gotbl" data-id="${x.id}">إضافة / تعديل</button><button class="btn" data-a="printorder" data-id="${x.id}">طباعة الأوردر</button></div>
     <button class="btn g" data-a="stop" data-id="${x.id}" style="margin-top:8px;width:100%">تحصيل / طباعة الدفع</button></div>`;}).join('')}</div>`:'<div class="empty">مفيش حسابات مفتوحة دلوقتي</div>'}`;
@@ -418,14 +420,11 @@ const pq={};
 function cafeMain(){
   const id=selTable,name=tblName(id),list=listFor(id)||[],d=draftOf(id);
   const dn=d.reduce((a,i)=>a+i.qty,0),dt=itemsTotal(d),t=itemsTotal(list);
-  const selN=list.reduce((a,i)=>a+Math.min(pq[i.id]||0,i.qty),0),selT=list.reduce((a,i)=>a+i.price*Math.min(pq[i.id]||0,i.qty),0);
   const conf=list.length?`<div class="name" style="margin-top:16px">اتأكد على ${esc(name)} · عدّل لو في غلط</div>
     <div class="items">${list.map(i=>`<div class="dl"><div class="it"><span><b>${esc(i.name)}</b></span><span class="q"><button data-a="dec" data-t="${id}" data-id="${i.id}" aria-label="تقليل">−</button><b>${i.qty}</b><button data-a="inc" data-t="${id}" data-id="${i.id}" aria-label="زيادة">+</button><span style="min-width:56px;text-align:end">${money(i.price*i.qty)}</span><button class="btn x s" data-a="cdel" data-id="${i.id}" aria-label="حذف">حذف</button></span></div>
-      <div class="opts" style="margin:4px 0"><span class="note">حاسب مشروب لوحده:</span><span class="q"><button data-a="pqdec" data-id="${i.id}" aria-label="تقليل">−</button><b>${Math.min(pq[i.id]||0,i.qty)}</b><button data-a="pqinc" data-id="${i.id}" aria-label="زيادة">+</button></span></div>
       <div class="opts" style="margin:4px 0 8px"><span class="note">السكر:</span>${['ساده','مظبوط','زيادة'].map(v=>`<button class="chip ${i.sugar===v?'on':''}" data-a="csugar" data-id="${i.id}" data-v="${v}">${v}</button>`).join('')}<input data-f="cnote" data-id="${i.id}" placeholder="ملاحظات" value="${esc(i.note||'')}" aria-label="ملاحظات"></div></div>`).join('')}</div>
     <form class="form" id="mvform" style="margin-top:10px"><label>نقل الطلب لترابيزة رقم<input id="mvnum" type="number" inputmode="numeric" min="1" required></label><button class="btn" type="submit" style="flex:none">نقل</button></form>
     <div class="total"><span>حساب ${esc(name)}</span><span>${money(t)}</span></div>
-    ${selN?`<button class="btn p" data-a="paysel" data-id="${id}" style="width:100%;margin-bottom:8px">حاسب المحدد (${selN}) · ${money(selT)}</button>`:''}
     <div class="row"><button class="btn" data-a="printorder" data-id="${id}">طباعة الأوردر</button><button class="btn g" data-a="stop" data-id="${id}">تحصيل / طباعة الدفع</button></div>`:'';
   return `<div class="card"><div class="name">${esc(name)} · المنيو</div>
     <input id="msearch" type="search" placeholder="🔍 ابحث عن مشروب" value="${esc(msq)}" autocomplete="off" aria-label="بحث عن مشروب" style="width:100%;font-size:17px;margin:6px 0">
@@ -730,7 +729,7 @@ document.addEventListener('click',e=>{
   else if(a==='ddec'){const d=draftOf(selTable),f=d.find(x=>x.id===id);if(f){f.qty--;if(f.qty<=0)d.splice(d.indexOf(f),1);}}
   else if(a==='dsugar'){const f=draftOf(selTable).find(x=>x.id===id);if(f){if(f.sugar===b.dataset.v)delete f.sugar;else f.sugar=b.dataset.v;}}
   else if(a==='goord'){setTimeout(()=>{const e=document.getElementById('ordcard');if(e)e.scrollIntoView({behavior:'smooth',block:'start'});},60);}
-  else if(a==='pqinc'){const l=listFor(selTable),f=l&&l.find(x=>x.id===id);if(f&&(pq[id]||0)<f.qty)pq[id]=(pq[id]||0)+1;}
+  else if(a==='pqinc'){const l=listFor(b.dataset.t),f=l&&l.find(x=>x.id===id);if(f&&(pq[id]||0)<f.qty)pq[id]=(pq[id]||0)+1;}
   else if(a==='pqdec'){if(pq[id]>0)pq[id]--;}
   else if(a==='paysel'){
     const l=listFor(id)||[],parts=[],items=[];

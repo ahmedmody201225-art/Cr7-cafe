@@ -232,10 +232,15 @@ function bind(){
     dbx.collection(k).onSnapshot(q=>{
       applyRemote(k,q.docs);loaded[k]=true;fresh[k]=!q.metadata.fromCache;updStatus();softRender();
     },e=>{
-      if(e&&e.code==='permission-denied'&&(k==='sales'||k==='expenses')){staff=true;loaded[k]=true;fresh[k]=true;updStatus();softRender();return;}
+      if(e&&e.code==='permission-denied'&&(k==='sales'||k==='expenses')){if(k==='expenses'||!staff)staff=true;loaded[k]=true;fresh[k]=true;updStatus();softRender();return;}
       lastErr=true;if(e&&e.code==='permission-denied')permErr=true;softRender();
     });
   });
+}
+let closings=[],closErr=false;
+function bindClosings(){
+  dbx.collection('closings').onSnapshot(q=>{closErr=false;closings=q.docs.map(d=>Object.assign({id:d.id},clone(d.data()))).sort((a,b)=>b.ts-a.ts);softRender();},
+    e=>{closErr=true;softRender();});
 }
 function updStatus(){
   const el=document.getElementById('status');if(!el)return;
@@ -257,7 +262,7 @@ function banners(){
   if(mode==='local')h+='<div class="banner">البيانات محفوظة على الجهاز ده بس. افتح الصفحة وإنت مسجل دخول بحساب صاحب الصفحة، أو بحساب اتشارك معاه بصلاحية Contributor، عشان كل الأجهزة تشوف نفس البيانات.</div>';
   if(mode==='db'&&canWrite===false)h+='<div class="banner">حسابك صلاحيته عرض فقط. اطلب من صاحب الصفحة يدّيك صلاحية Contributor عشان تقدر تسجل.</div>';
   if(mode==='db'&&slow&&!ready()&&!permErr)h+='<div class="banner">السيستم المشترك بطيء في الرد. البيانات اللي قدامك ممكن تكون قديمة.</div>';
-  if(staff&&!permErr)h+='<div class="banner">داخل بصلاحية كاشير: الأجهزة والترابيزات والفواتير فقط.</div>';
+  if(staff&&!permErr)h+='<div class="banner">داخل بصلاحية كاشير: الأجهزة والترابيزات وفواتير النهاردة والتقفيل (عرض بدون تعديل).</div>';
   if(permErr)h+='<div class="banner e">الحساب ('+esc((auth.currentUser||{}).email||'')+') مش مسموح له بالبيانات. في Firestore افتح Rules وتأكد إن الإيميل ده مكتوب بالظبط جوه القواعد، واضغط Publish، وبعدين حدّث الصفحة.</div>';
   else if(lastErr)h+='<div class="banner e">تعذر الحفظ في السيستم المشترك. اتأكد من النت، واللي عملته ممكن ما يكونش اتحفظ.</div>';
   const lg=mode==='db'&&ready()?legacy():null;
@@ -412,8 +417,70 @@ function viewInvoice(){
   <div class="row"><button class="btn" data-a="printinv">طباعة بدون دفع</button><button class="btn" data-a="back">رجوع</button></div>
   ${inv.type==='ps'?`<button class="btn x s" data-a="discard" style="align-self:flex-start">${armed==='discard'?'تأكيد إلغاء الجلسة':'إلغاء الجلسة بدون حساب'}</button>`:''}</div></div>`;}
 
+/* ---- bills (cashier: today's invoices, read-only) ---- */
+function viewBills(){
+  const day=dayKey(Date.now()),sales=S.sales.filter(x=>dayKey(x.ts)===day);
+  const tot=sales.reduce((a,x)=>a+x.timeCost+itemsTotal(x.items)-(x.disc||0),0);
+  return `<div class="note" style="margin-bottom:10px">فواتير النهاردة · ${wdName(day)} · <span dir="ltr">${day}</span> (عرض وطباعة فقط)</div>
+  <div class="stats"><div class="stat main"><span>إجمالي النهاردة</span><strong>${money(tot)}</strong></div><div class="stat"><span>عدد الفواتير</span><strong>${sales.length}</strong></div></div>
+  <h2>الفواتير</h2>
+  ${sales.length?`<div class="scroll"><table><thead><tr><th>الوقت</th><th>البند</th><th>المدة</th><th>الإجمالي</th><th></th></tr></thead><tbody>${sales.slice().reverse().map(x=>`<tr><td>${timeStr(x.ts)}</td><td>${x.type==='ps'?esc(x.dev):'كافيه'+(x.dev&&x.dev!=='كافيه'?' · '+esc(x.dev):'')}${x.items.length?`<div class="note">${x.items.map(i=>esc(i.name)+'×'+i.qty).join('، ')}</div>`:''}</td><td>${x.type==='ps'?Math.round(x.mins)+' د':'—'}</td><td>${money(x.timeCost+itemsTotal(x.items)-(x.disc||0))}${x.disc?`<div class="note">خصم ${Math.round(x.disc)}</div>`:''}</td><td><button class="btn s" data-a="printsale" data-id="${x.id}">طباعة</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">مفيش فواتير النهاردة لسه</div>'}`;
+}
+
+/* ---- daily close ---- */
+function fmtH(m){m=Math.round(m);const h=Math.floor(m/60),r=m%60;return (h?h+' ساعة':'')+(h&&r?' و ':'')+(r||!h?r+' دقيقة':'');}
+function summarize(day){
+  const sales=S.sales.filter(x=>dayKey(x.ts)===day);
+  const items={},devs={};let mins=0,ps=0,cf=0,ds=0;
+  sales.forEach(x=>{
+    ps+=x.timeCost;cf+=itemsTotal(x.items);ds+=(x.disc||0);
+    if(x.type==='ps'){mins+=x.mins||0;const d=devs[x.dev]||(devs[x.dev]={mins:0,cost:0});d.mins+=x.mins||0;d.cost+=x.timeCost;}
+    x.items.forEach(i=>items[i.name]=(items[i.name]||0)+i.qty);
+  });
+  return {day,n:sales.length,mins:Math.round(mins),ps:Math.round(ps),cf:Math.round(cf),ds:Math.round(ds),total:Math.round(ps+cf-ds),items,devs};
+}
+function countsHTML(c){
+  const its=Object.entries(c.items).sort((a,b)=>b[1]-a[1]);
+  const dv=Object.entries(c.devs||{});
+  return `<div class="stats"><div class="stat main"><span>الإجمالي</span><strong>${money(c.total)}</strong></div>
+  <div class="stat"><span>بلايستيشن</span><strong>${money(c.ps)}</strong></div><div class="stat"><span>كافيه</span><strong>${money(c.cf)}</strong></div>
+  <div class="stat"><span>خصومات</span><strong>${money(c.ds)}</strong></div><div class="stat"><span>عدد الفواتير</span><strong>${c.n}</strong></div></div>
+  <h2 style="margin-top:12px">اللي خرج النهاردة</h2>
+  <div class="scroll"><table><tbody>
+  <tr><td><b>بلايستيشن</b></td><td><b>${fmtH(c.mins)}</b></td></tr>
+  ${dv.map(([n,d])=>`<tr><td class="note">· ${esc(n)}</td><td class="note">${fmtH(d.mins)} · ${money(d.cost)}</td></tr>`).join('')}
+  ${its.map(([n,q])=>`<tr><td>${esc(n)}</td><td><b>${q}</b></td></tr>`).join('')}
+  </tbody></table></div>${!its.length&&!c.mins?'<div class="empty">مفيش حاجة خرجت</div>':''}`;
+}
+function closeText(c){
+  return `تقفيل ${c.day}\nبلايستيشن: ${fmtH(c.mins)} (${c.ps} ج.م)\n`+Object.entries(c.items).map(([n,q])=>n+': '+q).join('\n')+`\nكافيه: ${c.cf} ج.م\nخصومات: ${c.ds} ج.م\nالإجمالي: ${c.total} ج.م\nفواتير: ${c.n}`
+    +(c.cash!=null?`\nالموجود في الدرج: ${c.cash} ج.م (الفرق ${c.cash-c.total})`:'');
+}
+function closingCard(c){
+  const diff=c.cash!=null?c.cash-c.total:null;
+  const del=!staff?`<button class="btn x s" data-a="delclose" data-id="${c.id}">${armed==='cl'+c.id?'تأكيد الحذف':'حذف'}</button>`:'';
+  return `<details class="card"><summary style="cursor:pointer"><b>${wdName(c.day)} <span dir="ltr">${c.day}</span></b> · قُفل ${timeStr(c.ts)} · ${esc(c.by||'')}<div class="note">إجمالي ${money(c.total)}${diff!=null?' · الفرق في الدرج '+(diff>0?'+':'')+Math.round(diff):''}</div></summary>
+  <div style="margin-top:10px">${countsHTML(c)}${c.cash!=null?`<div class="note" style="margin-top:8px">الموجود في الدرج: ${money(c.cash)} · ${diff===0?'مظبوط':diff>0?'زيادة '+Math.round(diff):'عجز '+Math.round(-diff)}</div>`:''}${c.note?`<div class="note">ملاحظة: ${esc(c.note)}</div>`:''}
+  <div class="row" style="margin-top:8px">${del}</div></div></details>`;
+}
+function viewClose(){
+  const today=dayKey(Date.now()),c=summarize(today);
+  const busy=Object.keys(S.active).length;
+  const list=staff?closings.filter(x=>x.day===today):closings.slice(0,40);
+  const doneToday=closings.some(x=>x.day===today);
+  return `${closErr?'<div class="banner e">مش قادر أقرا/أسجل التقفيلات. حدّث قواعد Firestore (الخطوة اللي بعتهالك) واضغط Publish.</div>':''}
+  <div class="note" style="margin-bottom:10px">${wdName(today)} · <span dir="ltr">${today}</span> · ${doneToday?'اتقفل النهاردة ✓ (ممكن تقفل تاني لو في شغل بعد التقفيل)':'لسه ما اتقفلش'}</div>
+  ${busy?`<div class="banner">في ${busy} جلسة/جلسات شغالة لسه — اللي لسه ما اتحاسبش مش هيدخل في التقفيل.</div>`:''}
+  ${countsHTML(c)}
+  <h2 style="margin-top:12px">تقفيل اليوم</h2>
+  <form class="form" id="closeform"><label>الموجود فعلًا في الدرج (اختياري)<input id="ccash" type="number" min="0" step="any" inputmode="decimal"></label><label>ملاحظة (اختياري)<input id="cnote"></label><button class="btn p" type="submit">تقفيل اليوم</button></form>
+  <div class="note">التقفيل بيتسجل ومبيتعدلش من الكاشير، وصاحب الحساب الرئيسي بيشوفه.</div>
+  <h2 style="margin-top:14px">${staff?'تقفيلات النهاردة':'التقفيلات السابقة'}</h2>
+  ${list.length?list.map(closingCard).join(''):'<div class="empty">مفيش تقفيلات لسه</div>'}`;
+}
+
 /* time-limit alert */
-let actx=null;const alerted={};
+let actx=null,lastBeep=0;const alerted={};
 function unlockAudio(){try{if(!actx){const C=window.AudioContext||window.webkitAudioContext;if(C)actx=new C();}if(actx&&actx.state==='suspended')actx.resume();}catch(e){}}
 ['click','touchstart','keydown'].forEach(ev=>document.addEventListener(ev,unlockAudio,{passive:true}));
 function beep(){
@@ -431,18 +498,20 @@ function viewAlert(){
   const x=dueSession();if(!x)return '';
   const id=x.d.id;
   return `<div class="overlay"><div class="modal" role="alertdialog" aria-label="انتهى الوقت"><div class="name" style="color:var(--danger)">انتهى وقت ${esc(x.d.name)}</div>
-  <div class="note">الوقت المحدد ${x.se.limit} دقيقة خلص. اللعب لسه شغال ومتحسب.</div>
+  <div class="note">الوقت المحدد ${x.se.limit} دقيقة خلص. اللعب لسه شغال ومتحسب. التنبيه هيفضل يرن لحد ما توقفه.</div>
   <button class="btn g" data-a="stop" data-id="${id}">إنهاء وحساب</button>
   <div class="row"><button class="btn" data-a="addlimit" data-id="${id}" data-n="15">+15 د</button><button class="btn" data-a="addlimit" data-id="${id}" data-n="30">+30 د</button><button class="btn" data-a="addlimit" data-id="${id}" data-n="60">+60 د</button></div>
-  <div class="row"><button class="btn" data-a="openlimit" data-id="${id}">كمّل مفتوح</button><button class="btn" data-a="ackalert" data-id="${id}">تجاهل</button></div></div></div>`;
+  <div class="row"><button class="btn" data-a="openlimit" data-id="${id}">كمّل مفتوح</button><button class="btn" data-a="ackalert" data-id="${id}">إيقاف التنبيه</button></div></div></div>`;
 }
-const TABS=[['devices','الأجهزة'],['cafe','الترابيزات'],['report','التقرير'],['history','الأيام'],['settings','الإعدادات']];
+const TABS=[['devices','الأجهزة'],['cafe','الترابيزات'],['bills','الفواتير'],['close','التقفيل'],['report','التقرير'],['history','الأيام'],['settings','الإعدادات']];
+const STAFF_TABS=['devices','cafe','bills','close'], ADMIN_HIDE=['bills'];
+const tabsFor=()=>TABS.filter(([k])=>staff?STAFF_TABS.includes(k):!ADMIN_HIDE.includes(k));
 function render(){
   if(mode==='auth'){document.getElementById('root').innerHTML=viewLogin();return;}
-  if(staff&&tab!=='devices'&&tab!=='cafe')tab='devices';
-  const views={devices:viewDevices,cafe:viewCafe,report:viewReport,history:viewHistory,settings:viewSettings};
+  if(staff&&!STAFF_TABS.includes(tab))tab='devices';if(!staff&&ADMIN_HIDE.includes(tab))tab='devices';
+  const views={devices:viewDevices,cafe:viewCafe,bills:viewBills,close:viewClose,report:viewReport,history:viewHistory,settings:viewSettings};
   document.getElementById('root').innerHTML=`<header><span class="brand"><img class="logo" src="${LOGO_MARK}" alt="CR7" style="height:34px;width:auto"><h1>كاشير الكافيه والبلايستيشن</h1></span><span class="hd"><span class="badge" id="status"></span><span class="clock" id="clock"></span><button class="btn s" data-a="logout">خروج</button></span></header>
-  <nav>${TABS.filter(([k])=>!staff||k==='devices'||k==='cafe').map(([k,l])=>`<button data-a="tab" data-id="${k}" aria-current="${tab===k}">${l}</button>`).join('')}</nav>
+  <nav>${tabsFor().map(([k,l])=>`<button data-a="tab" data-id="${k}" aria-current="${tab===k}">${l}</button>`).join('')}</nav>
   ${banners()}
   <main>${permErr?'<div class="empty">السيستم مقفول لحد ما قواعد Firestore تتظبط. بعد ما تظبطها حدّث الصفحة.</div>':(ready()||slow)?views[tab]():'<div class="empty">جاري تحميل البيانات…</div>'}</main>${viewInvoice()}${viewAlert()}`;
   tick();updStatus();
@@ -458,13 +527,13 @@ function tick(){
     const lb=document.querySelector('[data-tlabel="'+el.dataset.timer+'"]');
     if(lb)lb.textContent=lim>0?(rem>=0?'متبقي من '+lim+' د':'زيادة عن الوقت'):'وقت اللعب';
   });
-  S.devices.forEach(d=>{
-    const se=S.active[d.id];if(!se||!se.limit||se.ack)return;
-    if(elapsed(se,now)>=se.limit*60000){
-      const key=d.id+':'+se.limit+':'+se.segs[0].from;
-      if(!alerted[key]){alerted[key]=true;beep();notify(d.name);render();}
-    }
-  });
+  const due=dueSession();
+  if(due){
+    const key=due.d.id+':'+due.se.limit+':'+due.se.segs[0].from;
+    if(!alerted[key]){alerted[key]=true;notify(due.d.name);}
+    if(!document.querySelector('[role="alertdialog"]'))render();
+    if(now-lastBeep>=4000){lastBeep=now;beep();}
+  }
   document.querySelectorAll('[data-tcost]').forEach(el=>{const se=S.active[el.dataset.tcost];if(se)el.textContent=money(timeCost(se,now));});
 }
 setInterval(tick,1000);
@@ -476,7 +545,7 @@ function listFor(t){
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-a]');if(!b)return;
   const a=b.dataset.a,id=b.dataset.id,now=Date.now();let toPrint=null;
-  if(a!=='del'&&a!=='discard')armed=null;
+  if(a!=='del'&&a!=='discard'&&a!=='delclose')armed=null;
   if(a==='tab'){tab=id;}
   else if(a==='start'){
     const dv=pick[id]===undefined?0:pick[id];const lim=dv==='c'?(pickC[id]||0):(+dv||0);
@@ -524,6 +593,10 @@ document.addEventListener('click',e=>{
   else if(a==='restore'){
     try{const o=JSON.parse(document.getElementById('rt').value);if(!o||!Array.isArray(o.sales))throw 0;S=Object.assign(defaults(),o);inv=null;}
     catch(err){document.getElementById('rmsg').textContent='النسخة مش مظبوطة، اتأكد إنك لصقتها كاملة.';return;}}
+  else if(a==='delclose'){
+    if(armed==='cl'+id){armed=null;if(dbx)dbx.doc('closings/'+id).delete().catch(()=>{closErr=true;softRender();});closings=closings.filter(x=>x.id!==id);}
+    else armed='cl'+id;
+    render();return;}
   else if(a==='logout'){signOut(auth);return;}
   else if(a==='adddev'){S.devices.push({id:'d'+uid(),name:'جهاز '+(S.devices.length+1)});}
   else if(a==='deldev'){S.devices=S.devices.filter(x=>x.id!==id);}
@@ -554,6 +627,17 @@ document.addEventListener('input',e=>{
   document.getElementById('invdisc').textContent='-'+money(dd);
 });
 document.addEventListener('submit',e=>{
+  if(e.target.id==='closeform'){
+    e.preventDefault();
+    const now=Date.now(),c=summarize(dayKey(now)),cashV=document.getElementById('ccash').value,note=document.getElementById('cnote').value.trim();
+    const doc=Object.assign(c,{ts:now,by:((auth.currentUser||{}).email)||'محلي'});
+    if(cashV!=='')doc.cash=Math.round(+cashV||0);
+    if(note)doc.note=note;
+    const id=c.day+'-'+now;
+    closings.unshift(Object.assign({id},doc));
+    if(dbx)dbx.doc('closings/'+id).set(doc).catch(()=>{closErr=true;softRender();});
+    render();return;
+  }
   e.preventDefault();
   if(e.target.id==='loginform'){doLogin();return;}
   if(e.target.id==='expform'){S.expenses.push({id:uid(),ts:Date.now(),name:document.getElementById('expn').value.trim(),amount:+document.getElementById('expa').value||0});}
@@ -593,7 +677,7 @@ function doLogin(){
 let signedIn=false;
 onAuthStateChanged(auth,user=>{
   if(user){
-    signedIn=true;dbx=makeDb();mode='db';bind();render();
+    signedIn=true;dbx=makeDb();mode='db';bind();bindClosings();render();
     setTimeout(()=>{if(!ready()){slow=true;render();}},10000);
   }else{
     if(signedIn){location.reload();return;}

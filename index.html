@@ -57,6 +57,19 @@ html[data-theme="dark"] .btn.g{color:#06210f}
 .btn.s{padding:4px 10px;font-size:13px;flex:none}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{border:1px solid var(--line);background:var(--bg);padding:4px 10px;border-radius:99px;font-size:13px}
+.chip.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.chip.on b{color:var(--accent-fg)}
+.opts{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0;padding:8px;border:1px dashed var(--line);border-radius:10px}
+.opts input{flex:1;min-width:140px}
+.cafe{display:grid;grid-template-columns:116px minmax(0,1fr);gap:10px;align-items:start;font-size:17px}
+.cafe .tbls{display:flex;flex-direction:column;gap:6px;max-height:calc(100vh - 170px);overflow-y:auto;position:sticky;top:8px}
+.cafe .tbl{width:100%;padding:8px 10px;font-size:16px}
+.cafe .tbl b{font-size:13px}
+.cafe .chip{font-size:17px;padding:8px 14px}
+.cafe .it{font-size:17px}
+.cafe .note{font-size:14px}
+.cmain{display:grid;gap:10px;min-width:0}
+@media(min-width:900px){.cafe{grid-template-columns:170px minmax(0,1fr)}.cmain{grid-template-columns:minmax(0,1fr) 360px;align-items:start}.cmain .ord{position:sticky;top:8px}}
 .chip b{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:500}
 .items{display:flex;flex-direction:column;gap:4px;font-size:14px}
 .it{display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -168,7 +181,7 @@ function defaults(){return{
   devices:[1,2,3,4].map(i=>({id:'d'+i,name:'جهاز '+i})),
   rateS:20,rateD:30,
   menu:cr7Items(),
-  tables:[1,2,3,4,5,6].map(i=>({id:'t'+i,name:'ترابيزة '+i})),orders:{},
+  tables:Array.from({length:20},(_,i)=>i+1).map(i=>({id:'t'+i,name:'ترابيزة '+i})),orders:{},
   active:{},sales:[],expenses:[],cart:[]};}
 let S=defaults();
 /* Storage: shared `db` documents when available (every device sees the same data), else this device's localStorage.
@@ -294,7 +307,14 @@ const timeCost=(se,now)=>se.segs.reduce((a,g)=>a+((g.to||now)-g.from)/3600000*ra
 const itemsTotal=l=>l.reduce((a,i)=>a+i.price*i.qty,0);
 const curMode=se=>se.segs[se.segs.length-1].mode;
 
-function addTo(list,m){const f=list.find(i=>i.id===m.id);if(f)f.qty++;else list.push({id:m.id,name:m.name,price:m.price,qty:1});}
+const opt={sugar:'',note:''};
+function optTxt(i){return (i.sugar?'سكر '+i.sugar:'')+(i.sugar&&i.note?' · ':'')+(i.note||'');}
+function optBar(){return `<div class="opts"><span class="note">السكر:</span>${['ساده','مظبوط','زيادة'].map(v=>`<button class="chip ${opt.sugar===v?'on':''}" data-a="sugar" data-id="${v}" aria-pressed="${opt.sugar===v}">${v}</button>`).join('')}<input data-f="onote" placeholder="ملاحظات (مثلًا: من غير نعناع)" value="${esc(opt.note)}" aria-label="ملاحظات"></div>`;}
+function addTo(list,m,sugar,note){
+  const key=m.id+((sugar||note)?'~'+(sugar||'')+'~'+(note||''):'');
+  const f=list.find(i=>i.id===key);
+  if(f)f.qty++;else{const it={id:key,name:m.name,price:m.price,qty:1};if(sugar)it.sugar=sugar;if(note)it.note=note;list.push(it);}
+}
 function decFrom(list,id){const f=list.find(i=>i.id===id);if(!f)return;f.qty--;if(f.qty<=0)list.splice(list.indexOf(f),1);}
 
 function menuChips(target){
@@ -304,9 +324,10 @@ function menuChips(target){
   return order.map(c=>`${one?'':`<div class="note" style="margin:10px 0 4px"><b>${esc(c)}</b></div>`}<div class="chips">${groups[c].map(m=>`<button class="chip" data-a="add" data-t="${target}" data-id="${m.id}">${esc(m.name)} <b>${m.price}</b></button>`).join('')}</div>`).join('');}
 function itemsList(list,target){
   if(!list.length)return '<div class="note">مفيش طلبات لسه</div>';
-  return `<div class="items">${list.map(i=>`<div class="it"><span>${esc(i.name)}</span><span class="q"><button data-a="dec" data-t="${target}" data-id="${i.id}" aria-label="تقليل">−</button><b>${i.qty}</b><button data-a="add" data-t="${target}" data-id="${i.id}" aria-label="زيادة">+</button><span style="min-width:56px;text-align:end">${money(i.price*i.qty)}</span></span></div>`).join('')}</div>`;}
+  return `<div class="items">${list.map(i=>`<div class="it"><span>${esc(i.name)}${optTxt(i)?`<div class="note">${esc(optTxt(i))}</div>`:''}</span><span class="q"><button data-a="dec" data-t="${target}" data-id="${i.id}" aria-label="تقليل">−</button><b>${i.qty}</b><button data-a="inc" data-t="${target}" data-id="${i.id}" aria-label="زيادة">+</button><span style="min-width:56px;text-align:end">${money(i.price*i.qty)}</span></span></div>`).join('')}</div>`;}
 
-const pick={},pickC={};
+const pick={},pickC={},devOpen={};
+document.addEventListener('toggle',e=>{const t=e.target;if(t.dataset&&t.dataset.dopen)devOpen[t.dataset.dopen]=t.open;},true);
 const DURS=[[0,'مفتوح'],[15,'15 دقيقة'],[30,'30 دقيقة'],[45,'45 دقيقة'],[60,'ساعة'],[90,'ساعة ونص'],[120,'ساعتين'],[180,'3 ساعات'],['c','مدة مخصصة']];
 function deviceCard(d){
   const se=S.active[d.id], now=Date.now();
@@ -327,7 +348,7 @@ function deviceCard(d){
     <div class="note">${lim>0?'مدّ الوقت':'حدد وقت من دلوقتي'}</div>
     <div class="row"><button class="btn s" data-a="addlimit" data-id="${d.id}" data-n="15">+15 د</button><button class="btn s" data-a="addlimit" data-id="${d.id}" data-n="30">+30 د</button><button class="btn s" data-a="addlimit" data-id="${d.id}" data-n="60">+60 د</button>${lim>0?`<button class="btn s" data-a="openlimit" data-id="${d.id}">فتح الوقت</button>`:''}</div>
     ${itemsList(se.items,d.id)}
-    <details><summary class="note" style="cursor:pointer">إضافة طلب من المنيو</summary><div style="margin-top:8px">${menuChips(d.id)}</div></details>
+    <details ${devOpen[d.id]?'open':''} data-dopen="${d.id}"><summary class="note" style="cursor:pointer">إضافة طلب من المنيو</summary><div style="margin-top:8px">${optBar()}${menuChips(d.id)}</div></details>
     <button class="btn g" data-a="stop" data-id="${d.id}">إنهاء وحساب</button></div>`;}
 
 function viewDevices(){
@@ -336,17 +357,18 @@ function viewDevices(){
 
 function tblTotal(id){return itemsTotal(id==='cafe'?S.cart:(S.orders[id]||[]));}
 function viewCafe(){
-  const all=[...S.tables.map(t=>({id:t.id,name:t.name})),{id:'cafe',name:'تيك أواي'}];
+  const all=[{id:'cafe',name:'تيك أواي'},...S.tables.map(t=>({id:t.id,name:t.name}))];
   if(!all.some(t=>t.id===selTable))selTable=all[0].id;
   const cur=all.find(t=>t.id===selTable);
   const list=listFor(selTable)||[];
   const t=itemsTotal(list);
   const busy=all.filter(x=>tblTotal(x.id)>0).length;
-  return `<div class="note" style="margin-bottom:10px">${busy} طلب مفتوح</div>
-  <div class="tbls">${all.map(x=>{const tt=tblTotal(x.id);return `<button class="tbl ${tt?'busy':''}" data-a="seltable" data-id="${x.id}" aria-pressed="${selTable===x.id}"><span>${esc(x.name)}</span><b>${tt?money(tt):'فاضية'}</b></button>`;}).join('')}</div>
-  <div class="card" style="margin-top:14px"><div class="name">${esc(cur.name)}</div>${menuChips(selTable)}${itemsList(list,selTable)}
+  return `<div class="note" style="margin-bottom:8px">${busy} طلب مفتوح · ${S.tables.length} ترابيزة</div>
+  <div class="cafe"><div class="tbls">${all.map(x=>{const tt=tblTotal(x.id);return `<button class="tbl ${tt?'busy':''}" data-a="seltable" data-id="${x.id}" aria-pressed="${selTable===x.id}"><span>${esc(x.name)}</span><b>${tt?money(tt):'فاضية'}</b></button>`;}).join('')}</div>
+  <div class="cmain"><div class="card"><div class="name">${esc(cur.name)} · المنيو</div><div class="sub" style="font-size:15px"><span>${list.reduce((a,i)=>a+i.qty,0)} صنف في الطلب</span><b>${money(t)}</b></div>${optBar()}${menuChips(selTable)}</div>
+  <div class="card ord"><div class="name">طلب ${esc(cur.name)}</div>${itemsList(list,selTable)}
     <div class="total"><span>الإجمالي</span><span>${money(t)}</span></div>
-    <div class="row"><button class="btn g" data-a="stop" data-id="${selTable}" ${t?'':'disabled'}>تحصيل</button><button class="btn x" data-a="clearcart" data-id="${selTable}" ${list.length?'':'disabled'}>مسح الطلب</button></div></div>`;}
+    <div class="row"><button class="btn g" data-a="stop" data-id="${selTable}" ${t?'':'disabled'}>تحصيل</button><button class="btn x" data-a="clearcart" data-id="${selTable}" ${list.length?'':'disabled'}>مسح الطلب</button></div></div></div></div>`;}
 
 let histMonth=dayKey(Date.now()).slice(0,7);
 function shiftDay(k,n){const d=new Date(k+'T12:00:00');d.setDate(d.getDate()+n);return dayKey(d.getTime());}
@@ -403,7 +425,7 @@ function viewSettings(){
   <div class="row" style="margin-top:10px"><button class="btn s" data-a="adddev">+ إضافة جهاز</button></div>
   <h2>الترابيزات</h2>
   <div class="grid">${S.tables.map(t=>`<div class="form"><input data-f="tbl" data-id="${t.id}" value="${esc(t.name)}" aria-label="اسم الترابيزة">${tblTotal(t.id)?'<span class="note">عليها طلب</span>':`<button class="btn x s" data-a="deltable" data-id="${t.id}">حذف</button>`}</div>`).join('')}</div>
-  <div class="row" style="margin-top:10px"><button class="btn s" data-a="addtable">+ إضافة ترابيزة</button></div>
+  <div class="row" style="margin-top:10px"><button class="btn s" data-a="addtable">+ إضافة ترابيزة</button><button class="btn s" data-a="tables20">خليها 20 ترابيزة</button></div>
   <h2>المنيو</h2>
   <div class="grid">${S.menu.map(m=>`<div class="form"><input data-f="mname" data-id="${m.id}" value="${esc(m.name)}" aria-label="اسم الصنف"><input data-f="mprice" data-id="${m.id}" type="number" min="0" value="${m.price}" style="max-width:90px" aria-label="السعر"><input data-f="mcat" data-id="${m.id}" value="${esc(m.cat||'')}" placeholder="القسم" style="max-width:110px" aria-label="القسم"><button class="btn x s" data-a="delmenu" data-id="${m.id}">حذف</button></div>`).join('')}</div>
   <form class="form" id="menuform" style="margin-top:12px"><label>صنف جديد<input id="mn" required></label><label>السعر<input id="mp" type="number" min="0" step="any" required inputmode="decimal"></label><label>القسم<input id="mc" placeholder="اختياري"></label><button class="btn p" type="submit">إضافة للمنيو</button></form>
@@ -472,7 +494,7 @@ function closingCard(c){
   const del=!staff?`<button class="btn x s" data-a="delclose" data-id="${c.id}">${armed==='cl'+c.id?'تأكيد الحذف':'حذف'}</button>`:'';
   return `<details class="card"><summary style="cursor:pointer"><b>${wdName(c.day)} <span dir="ltr">${c.day}</span></b> · قُفل ${timeStr(c.ts)} · ${esc(c.by||'')}<div class="note">إجمالي ${money(c.total)}${diff!=null?' · الفرق في الدرج '+(diff>0?'+':'')+Math.round(diff):''}</div></summary>
   <div style="margin-top:10px">${countsHTML(c)}${c.cash!=null?`<div class="note" style="margin-top:8px">الموجود في الدرج: ${money(c.cash)} · ${diff===0?'مظبوط':diff>0?'زيادة '+Math.round(diff):'عجز '+Math.round(-diff)}</div>`:''}${c.note?`<div class="note">ملاحظة: ${esc(c.note)}</div>`:''}
-  <div class="row" style="margin-top:8px">${del}</div></div></details>`;
+  <div class="row" style="margin-top:8px"><button class="btn s" data-a="printclose" data-id="${c.id}">طباعة التقفيل</button>${del}</div></div></details>`;
 }
 function viewClose(){
   const today=dayKey(Date.now()),c=summarize(today);
@@ -483,6 +505,7 @@ function viewClose(){
   <div class="note" style="margin-bottom:10px">${wdName(today)} · <span dir="ltr">${today}</span> · ${doneToday?'اتقفل النهاردة ✓ (ممكن تقفل تاني لو في شغل بعد التقفيل)':'لسه ما اتقفلش'}</div>
   ${busy?`<div class="banner">في ${busy} جلسة/جلسات شغالة لسه — اللي لسه ما اتحاسبش مش هيدخل في التقفيل.</div>`:''}
   ${countsHTML(c)}
+  <div class="row" style="margin-top:10px"><button class="btn" data-a="printclose" data-id="live">طباعة ملخص اليوم كله</button></div>
   <h2 style="margin-top:12px">تقفيل اليوم</h2>
   <form class="form" id="closeform"><label>الموجود فعلًا في الدرج (اختياري)<input id="ccash" type="number" min="0" step="any" inputmode="decimal"></label><label>ملاحظة (اختياري)<input id="cnote"></label><button class="btn p" type="submit">تقفيل اليوم</button></form>
   <div class="note">التقفيل بيتسجل ومبيتعدلش من الكاشير، وصاحب الحساب الرئيسي بيشوفه.</div>
@@ -567,10 +590,13 @@ document.addEventListener('click',e=>{
   else if(a==='openlimit'){const se=S.active[id];if(se){se.limit=0;se.ack=false;}}
   else if(a==='ackalert'){const se=S.active[id];if(se)se.ack=true;}
   else if(a==='toggle'){const se=S.active[id];const g=se.segs[se.segs.length-1];g.to=now;se.segs.push({mode:g.mode==='S'?'D':'S',from:now});}
-  else if(a==='add'){const l=listFor(b.dataset.t),m=S.menu.find(x=>x.id===id);if(l&&m)addTo(l,m);else if(l){const f=l.find(x=>x.id===id);if(f)f.qty++;}}
+  else if(a==='add'){const l=listFor(b.dataset.t),m=S.menu.find(x=>x.id===id);if(l&&m){addTo(l,m,opt.sugar,opt.note);opt.sugar='';opt.note='';}}
+  else if(a==='inc'){const l=listFor(b.dataset.t);const f=l&&l.find(x=>x.id===id);if(f)f.qty++;}
+  else if(a==='sugar'){opt.sugar=opt.sugar===id?'':id;}
   else if(a==='dec'){const l=listFor(b.dataset.t);if(l)decFrom(l,id);}
   else if(a==='clearcart'){if(id==='cafe')S.cart=[];else delete S.orders[id];}
   else if(a==='seltable'){selTable=id;}
+  else if(a==='tables20'){while(S.tables.length<20)S.tables.push({id:'t'+uid(),name:'ترابيزة '+(S.tables.length+1)});}
   else if(a==='addtable'){S.tables.push({id:'t'+uid(),name:'ترابيزة '+(S.tables.length+1)});}
   else if(a==='deltable'){S.tables=S.tables.filter(x=>x.id!==id);delete S.orders[id];}
   else if(a==='stop'){
@@ -608,6 +634,10 @@ document.addEventListener('click',e=>{
     if(armed==='cl'+id){armed=null;if(dbx)dbx.doc('closings/'+id).delete().catch(()=>{closErr=true;softRender();});closings=closings.filter(x=>x.id!==id);}
     else armed='cl'+id;
     render();return;}
+  else if(a==='printclose'){
+    const c=id==='live'?Object.assign(summarize(dayKey(now)),{ts:now,by:((auth.currentUser||{}).email)||''}):closings.find(x=>x.id===id);
+    if(c)pHTML=closeReceiptHTML(c);
+  }
   else if(a==='logout'){signOut(auth);return;}
   else if(a==='adddev'){S.devices.push({id:'d'+uid(),name:'جهاز '+(S.devices.length+1)});}
   else if(a==='deldev'){S.devices=S.devices.filter(x=>x.id!==id);}
@@ -619,12 +649,14 @@ document.addEventListener('click',e=>{
   else if(a==='delmenu'){S.menu=S.menu.filter(x=>x.id!==id);}
   save();render();
   if(toPrint)printReceipt(toPrint);
+  if(pHTML){const h=pHTML;pHTML=null;printHTML(h);}
 });
 document.addEventListener('change',e=>{
   const t=e.target;
   if(t.id==='hmonth'){histMonth=t.value||dayKey(Date.now()).slice(0,7);render();return;}
   if(t.id==='rday'){reportDay=t.value||dayKey(Date.now());render();return;}
   const f=t.dataset&&t.dataset.f;if(!f)return;
+  if(f==='onote'){opt.note=t.value;return;}
   if(f==='dur'){pick[t.dataset.id]=t.value==='c'?'c':+t.value;render();return;}
   if(f==='durc'){pickC[t.dataset.id]=Math.max(0,Math.round(+t.value||0));return;}
   if(f==='rateS'||f==='rateD')S[f]=Math.max(0,+t.value||0);
@@ -636,7 +668,7 @@ document.addEventListener('change',e=>{
   save();
 });
 document.addEventListener('input',e=>{
-  const t=e.target;if(!inv||(t.id!=='dval'&&t.id!=='dtype'))return;
+  const t=e.target;if(t.dataset&&t.dataset.f==='onote'){opt.note=t.value;return;}if(!inv||(t.id!=='dval'&&t.id!=='dtype'))return;
   if(t.id==='dval')inv.dval=t.value;else inv.dtype=t.value;
   const dd=invDisc();
   document.getElementById('invtot').textContent=money(invSub()-dd);
@@ -669,10 +701,20 @@ document.addEventListener('focusout',()=>{
 function receiptHTML(s){
   const tot=s.timeCost+itemsTotal(s.items)-(s.disc||0),d=new Date(s.ts);
   const dc=s.disc>0?`<tr><td>خصم</td><td>-${Math.round(s.disc)}</td></tr>`:'';
-  const rows=s.items.map(i=>`<tr><td>${esc(i.name)} × ${i.qty}</td><td>${Math.round(i.price*i.qty)}</td></tr>`).join('');
+  const rows=s.items.map(i=>`<tr><td>${esc(i.name)} × ${i.qty}${optTxt(i)?`<br><small>${esc(optTxt(i))}</small>`:''}</td><td>${Math.round(i.price*i.qty)}</td></tr>`).join('');
   const ps=s.type==='ps'?`<tr><td>وقت اللعب (${Math.round(s.mins)} د)</td><td>${Math.round(s.timeCost)}</td></tr>`:'';
   return `<div class="rc"><img class="logo" src="${LOGO_MARK}" alt="CR7" style="width:30mm;margin:0 auto 4px"><div class="rm">${d.toLocaleDateString('ar-EG')} · ${timeStr(s.ts)}</div><div class="rm">${esc(s.dev)}${s.id?' · #'+esc(String(s.id).slice(0,5)):''}</div><table>${ps}${rows}${dc}</table><div class="rt"><span>الإجمالي</span><span>${Math.round(tot)} ج.م</span></div><div class="rm">شكرًا لزيارتكم</div></div>`;
 }
+function closeReceiptHTML(c){
+  const its=Object.entries(c.items||{}).sort((a,b)=>b[1]-a[1]),dv=Object.entries(c.devs||{}),d=new Date(c.ts||Date.now());
+  const diff=c.cash!=null?c.cash-c.total:null;
+  return `<div class="rc"><img class="logo" src="${LOGO_MARK}" alt="CR7" style="width:30mm;margin:0 auto 4px"><h2>تقفيل يوم</h2><div class="rm">${wdName(c.day)} ${esc(c.day)}</div><div class="rm">طُبع ${d.toLocaleDateString('ar-EG')} ${timeStr(d.getTime())}${c.by?' · '+esc(c.by):''}</div>
+  <table><tr><td><b>بلايستيشن</b></td><td><b>${fmtH(c.mins)}</b></td></tr>${dv.map(([n,x])=>`<tr><td>· ${esc(n)}</td><td>${fmtH(x.mins)}</td></tr>`).join('')}${its.map(([n,q])=>`<tr><td>${esc(n)}</td><td><b>${q}</b></td></tr>`).join('')}</table>
+  <table><tr><td>بلايستيشن</td><td>${c.ps}</td></tr><tr><td>كافيه</td><td>${c.cf}</td></tr><tr><td>خصومات</td><td>-${c.ds}</td></tr><tr><td>عدد الفواتير</td><td>${c.n}</td></tr>${c.cash!=null?`<tr><td>الموجود في الدرج</td><td>${c.cash}</td></tr><tr><td>الفرق</td><td>${diff>0?'+':''}${diff}</td></tr>`:''}</table>
+  <div class="rt"><span>الإجمالي</span><span>${c.total} ج.م</span></div>${c.note?`<div class="rm">ملاحظة: ${esc(c.note)}</div>`:''}</div>`;
+}
+let pHTML=null;
+function printHTML(h){document.getElementById('receipt').innerHTML=h;setTimeout(()=>window.print(),80);}
 function printReceipt(s){
   document.getElementById('receipt').innerHTML=receiptHTML(s);
   setTimeout(()=>window.print(),80);

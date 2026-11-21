@@ -101,6 +101,9 @@ body::after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;back
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) body::after{filter:invert(1);opacity:.1}}
 :root[data-theme="dark"] body::after{filter:invert(1);opacity:.1}
 h1{color:var(--accent)}
+[hidden]{display:none!important}
+.timer.over{color:var(--danger)}
+.card.over{border-color:var(--danger);box-shadow:0 0 0 2px var(--danger)}
 .card{box-shadow:0 3px 14px rgba(91,75,219,.10)}
 .btn.p[data-m="D"]{background:var(--pink);border-color:var(--pink);color:var(--accent-fg)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo{filter:invert(1)}}
@@ -187,12 +190,12 @@ const ready=()=>mode==='local'||(mode==='db'&&COLS.every(k=>loaded[k]));
 function desired(){
   const m={};
   if(loaded.cfg)m['cfg/main']=cfgOf(S);
-  if(loaded.active)Object.entries(S.active).forEach(([id,se])=>{m['active/'+id]={segs:se.segs,items:se.items};});
+  if(loaded.active)Object.entries(S.active).forEach(([id,se])=>{m['active/'+id]={segs:se.segs,items:se.items,limit:se.limit||0,ack:!!se.ack};});
   if(loaded.orders){
     Object.entries(S.orders).forEach(([id,l])=>{if(l&&l.length)m['orders/'+id]={items:l};});
     if(S.cart.length)m['orders/cafe']={items:S.cart};
   }
-  if(loaded.sales)S.sales.forEach(s=>{m['sales/'+s.id]={ts:s.ts,type:s.type,dev:s.dev,mins:s.mins,timeCost:s.timeCost,items:s.items};});
+  if(loaded.sales)S.sales.forEach(s=>{m['sales/'+s.id]=Object.assign({ts:s.ts,type:s.type,dev:s.dev,mins:s.mins,timeCost:s.timeCost,items:s.items},s.disc?{disc:s.disc}:{});});
   if(loaded.expenses)S.expenses.forEach(e=>{m['expenses/'+e.id]={ts:e.ts,name:e.name,amount:e.amount};});
   return m;
 }
@@ -219,7 +222,7 @@ function applyRemote(k,docs){
   docs.forEach(d=>{remote[k+'/'+d.id]=canon(d.data());});
   const data=d=>clone(d.data());
   if(k==='cfg'){const d=docs.find(x=>x.id==='main');if(d){const o=data(d);['rateS','rateD','devices','tables','menu'].forEach(f=>{if(o[f]!==undefined)S[f]=o[f];});}}
-  else if(k==='active'){S.active={};docs.forEach(d=>{const o=data(d);if(o.segs&&o.segs.length)S.active[d.id]={segs:o.segs,items:o.items||[]};});}
+  else if(k==='active'){S.active={};docs.forEach(d=>{const o=data(d);if(o.segs&&o.segs.length)S.active[d.id]={segs:o.segs,items:o.items||[],limit:o.limit||0,ack:!!o.ack};});}
   else if(k==='orders'){S.orders={};S.cart=[];docs.forEach(d=>{const items=data(d).items||[];if(d.id==='cafe')S.cart=items;else S.orders[d.id]=items;});}
   else if(k==='sales'){S.sales=docs.map(d=>Object.assign({id:d.id},data(d))).sort((a,b)=>a.ts-b.ts);}
   else if(k==='expenses'){S.expenses=docs.map(d=>Object.assign({id:d.id},data(d))).sort((a,b)=>a.ts-b.ts);}
@@ -289,15 +292,26 @@ function itemsList(list,target){
   if(!list.length)return '<div class="note">مفيش طلبات لسه</div>';
   return `<div class="items">${list.map(i=>`<div class="it"><span>${esc(i.name)}</span><span class="q"><button data-a="dec" data-t="${target}" data-id="${i.id}" aria-label="تقليل">−</button><b>${i.qty}</b><button data-a="add" data-t="${target}" data-id="${i.id}" aria-label="زيادة">+</button><span style="min-width:56px;text-align:end">${money(i.price*i.qty)}</span></span></div>`).join('')}</div>`;}
 
+const pick={},pickC={};
+const DURS=[[0,'مفتوح'],[15,'15 دقيقة'],[30,'30 دقيقة'],[45,'45 دقيقة'],[60,'ساعة'],[90,'ساعة ونص'],[120,'ساعتين'],[180,'3 ساعات'],['c','مدة مخصصة']];
 function deviceCard(d){
   const se=S.active[d.id], now=Date.now();
-  if(!se)return `<div class="card"><div class="top"><span class="name">${esc(d.name)}</span><span class="badge">فاضي</span></div>
+  if(!se){
+    const dv=pick[d.id]===undefined?0:pick[d.id];
+    return `<div class="card"><div class="top"><span class="name">${esc(d.name)}</span><span class="badge">فاضي</span></div>
+    <label>مدة اللعب<select data-f="dur" data-id="${d.id}">${DURS.map(([v,l])=>`<option value="${v}" ${String(dv)===String(v)?'selected':''}>${l}</option>`).join('')}</select></label>
+    ${dv==='c'?`<label>عدد الدقائق<input type="number" min="1" inputmode="numeric" data-f="durc" data-id="${d.id}" value="${pickC[d.id]||''}"></label>`:''}
     <div class="row"><button class="btn p" data-a="start" data-id="${d.id}" data-m="S">فردي · ${S.rateS}/ساعة</button><button class="btn p" data-a="start" data-id="${d.id}" data-m="D">زوجي · ${S.rateD}/ساعة</button></div></div>`;
-  const m=curMode(se);
-  return `<div class="card on"><div class="top"><span class="name">${esc(d.name)}</span><span class="badge ${m==='D'?'d':'on'}">${m==='D'?'زوجي':'فردي'} · شغال</span></div>
-    <div class="timer" data-timer="${d.id}">${hms(elapsed(se,now))}</div>
-    <div class="sub"><span>وقت اللعب</span><span data-tcost="${d.id}">${money(timeCost(se,now))}</span></div>
+  }
+  const m=curMode(se), lim=se.limit||0, e=elapsed(se,now), rem=lim*60000-e, over=lim>0&&rem<0;
+  const tTxt=lim>0?(rem>=0?hms(rem):'+'+hms(-rem)):hms(e);
+  const lbl=lim>0?(over?'زيادة عن الوقت':'متبقي من '+lim+' د'):'وقت اللعب';
+  return `<div class="card on ${over?'over':''}"><div class="top"><span class="name">${esc(d.name)}</span><span class="badge ${m==='D'?'d':'on'}">${m==='D'?'زوجي':'فردي'} · شغال</span></div>
+    <div class="timer ${over?'over':''}" data-timer="${d.id}">${tTxt}</div>
+    <div class="sub"><span data-tlabel="${d.id}">${lbl}</span><span data-tcost="${d.id}">${money(timeCost(se,now))}</span></div>
     <div class="row"><button class="btn" data-a="toggle" data-id="${d.id}">تحويل إلى ${m==='D'?'فردي':'زوجي'}</button></div>
+    <div class="note">${lim>0?'مدّ الوقت':'حدد وقت من دلوقتي'}</div>
+    <div class="row"><button class="btn s" data-a="addlimit" data-id="${d.id}" data-n="15">+15 د</button><button class="btn s" data-a="addlimit" data-id="${d.id}" data-n="30">+30 د</button><button class="btn s" data-a="addlimit" data-id="${d.id}" data-n="60">+60 د</button>${lim>0?`<button class="btn s" data-a="openlimit" data-id="${d.id}">فتح الوقت</button>`:''}</div>
     ${itemsList(se.items,d.id)}
     <details><summary class="note" style="cursor:pointer">إضافة طلب من المنيو</summary><div style="margin-top:8px">${menuChips(d.id)}</div></details>
     <button class="btn g" data-a="stop" data-id="${d.id}">إنهاء وحساب</button></div>`;}
@@ -325,44 +339,44 @@ function shiftDay(k,n){const d=new Date(k+'T12:00:00');d.setDate(d.getDate()+n);
 const wdName=k=>new Date(k+'T12:00:00').toLocaleDateString('ar-EG',{weekday:'long'});
 function viewHistory(){
   const days={};
-  const get=k=>days[k]||(days[k]={ps:0,cf:0,ex:0,n:0});
-  S.sales.forEach(s=>{const k=dayKey(s.ts);if(k.startsWith(histMonth)){const d=get(k);d.ps+=s.timeCost;d.cf+=itemsTotal(s.items);d.n++;}});
+  const get=k=>days[k]||(days[k]={ps:0,cf:0,ex:0,ds:0,n:0});
+  S.sales.forEach(s=>{const k=dayKey(s.ts);if(k.startsWith(histMonth)){const d=get(k);d.ps+=s.timeCost;d.cf+=itemsTotal(s.items);d.ds+=(s.disc||0);d.n++;}});
   S.expenses.forEach(e=>{const k=dayKey(e.ts);if(k.startsWith(histMonth))get(k).ex+=e.amount;});
   const keys=Object.keys(days).sort().reverse();
-  const T=keys.reduce((a,k)=>({ps:a.ps+days[k].ps,cf:a.cf+days[k].cf,ex:a.ex+days[k].ex}),{ps:0,cf:0,ex:0});
-  const gross=T.ps+T.cf;
+  const T=keys.reduce((a,k)=>({ps:a.ps+days[k].ps,cf:a.cf+days[k].cf,ex:a.ex+days[k].ex,ds:a.ds+days[k].ds}),{ps:0,cf:0,ex:0,ds:0});
+  const gross=T.ps+T.cf-T.ds;
   return `<div class="form" style="margin-bottom:12px"><label>الشهر<input type="month" id="hmonth" value="${histMonth}"></label></div>
   <div class="stats"><div class="stat main"><span>إجمالي الشهر</span><strong>${money(gross)}</strong></div>
   <div class="stat"><span>بلايستيشن</span><strong>${money(T.ps)}</strong></div><div class="stat"><span>كافيه</span><strong>${money(T.cf)}</strong></div>
-  <div class="stat"><span>مصروفات</span><strong>${money(T.ex)}</strong></div><div class="stat"><span>الصافي</span><strong>${money(gross-T.ex)}</strong></div>
+  <div class="stat"><span>خصومات</span><strong>${money(T.ds)}</strong></div><div class="stat"><span>مصروفات</span><strong>${money(T.ex)}</strong></div><div class="stat"><span>الصافي</span><strong>${money(gross-T.ex)}</strong></div>
   <div class="stat"><span>أيام الشغل</span><strong>${keys.length}</strong></div>
   <div class="stat"><span>متوسط اليوم</span><strong>${keys.length?money(gross/keys.length):'—'}</strong></div></div>
   <h2>أيام الشهر</h2>
-  ${keys.length?`<div class="scroll"><table><thead><tr><th>اليوم</th><th>بلايستيشن</th><th>كافيه</th><th>مصروفات</th><th>الصافي</th><th></th></tr></thead><tbody>${keys.map(k=>{const d=days[k];return `<tr><td>${wdName(k)}<div class="note" dir="ltr" style="text-align:start">${k}</div></td><td>${money(d.ps)}</td><td>${money(d.cf)}</td><td>${money(d.ex)}</td><td><b>${money(d.ps+d.cf-d.ex)}</b></td><td style="text-align:end"><button class="btn s" data-a="openday" data-id="${k}">فتح</button></td></tr>`;}).join('')}</tbody></table></div>`:'<div class="empty">مفيش عمليات متسجلة في الشهر ده</div>'}`;}
+  ${keys.length?`<div class="scroll"><table><thead><tr><th>اليوم</th><th>بلايستيشن</th><th>كافيه</th><th>خصومات</th><th>مصروفات</th><th>الصافي</th><th></th></tr></thead><tbody>${keys.map(k=>{const d=days[k];return `<tr><td>${wdName(k)}<div class="note" dir="ltr" style="text-align:start">${k}</div></td><td>${money(d.ps)}</td><td>${money(d.cf)}</td><td>${money(d.ds)}</td><td>${money(d.ex)}</td><td><b>${money(d.ps+d.cf-d.ds-d.ex)}</b></td><td style="text-align:end"><button class="btn s" data-a="openday" data-id="${k}">فتح</button></td></tr>`;}).join('')}</tbody></table></div>`:'<div class="empty">مفيش عمليات متسجلة في الشهر ده</div>'}`;}
 
 function daySales(){return S.sales.filter(s=>dayKey(s.ts)===reportDay);}
 function viewReport(){
   const sales=daySales(), exps=S.expenses.filter(e=>dayKey(e.ts)===reportDay);
-  const ps=sales.reduce((a,s)=>a+s.timeCost,0), cf=sales.reduce((a,s)=>a+itemsTotal(s.items),0), ex=exps.reduce((a,e)=>a+e.amount,0);
+  const ps=sales.reduce((a,s)=>a+s.timeCost,0), cf=sales.reduce((a,s)=>a+itemsTotal(s.items),0), ds=sales.reduce((a,s)=>a+(s.disc||0),0), ex=exps.reduce((a,e)=>a+e.amount,0);
   const byDev={}, byItem={};
   sales.forEach(s=>{if(s.type==='ps')byDev[s.dev]=(byDev[s.dev]||0)+s.timeCost;s.items.forEach(i=>byItem[i.name]=(byItem[i.name]||0)+i.qty);});
   const top=o=>Object.entries(o).sort((a,b)=>b[1]-a[1])[0];
   const td=top(byDev), ti=top(byItem);
   const mins=sales.reduce((a,s)=>a+(s.mins||0),0);
-  copyText=`تقرير ${reportDay}\nبلايستيشن: ${Math.round(ps)}\nكافيه: ${Math.round(cf)}\nالإجمالي: ${Math.round(ps+cf)}\nمصروفات: ${Math.round(ex)}\nالصافي: ${Math.round(ps+cf-ex)}`;
+  copyText=`تقرير ${reportDay}\nبلايستيشن: ${Math.round(ps)}\nكافيه: ${Math.round(cf)}\nخصومات: ${Math.round(ds)}\nالإجمالي: ${Math.round(ps+cf-ds)}\nمصروفات: ${Math.round(ex)}\nالصافي: ${Math.round(ps+cf-ds-ex)}`;
   const del=(k,id)=>`<button class="btn x s" data-a="del" data-k="${k}" data-id="${id}">${armed===k+id?'تأكيد الحذف':'حذف'}</button>`;
   return `<div class="form" style="margin-bottom:6px"><button class="btn s" data-a="day" data-id="-1">اليوم اللي قبله</button><label>التاريخ<input type="date" id="rday" value="${reportDay}"></label><button class="btn s" data-a="day" data-id="1">اليوم اللي بعده</button><button class="btn s" data-a="day" data-id="today">النهاردة</button></div>
   <div class="note" style="margin-bottom:12px">${wdName(reportDay)} · <span dir="ltr">${reportDay}</span></div>
-  <div class="stats"><div class="stat main"><span>الإجمالي</span><strong>${money(ps+cf)}</strong></div>
+  <div class="stats"><div class="stat main"><span>الإجمالي</span><strong>${money(ps+cf-ds)}</strong></div>
   <div class="stat"><span>بلايستيشن</span><strong>${money(ps)}</strong></div><div class="stat"><span>كافيه</span><strong>${money(cf)}</strong></div>
-  <div class="stat"><span>مصروفات</span><strong>${money(ex)}</strong></div><div class="stat"><span>الصافي</span><strong>${money(ps+cf-ex)}</strong></div>
+  <div class="stat"><span>خصومات</span><strong>${money(ds)}</strong></div><div class="stat"><span>مصروفات</span><strong>${money(ex)}</strong></div><div class="stat"><span>الصافي</span><strong>${money(ps+cf-ds-ex)}</strong></div>
   <div class="stat"><span>ساعات اللعب</span><strong>${(mins/60).toFixed(1)}</strong></div>
   <div class="stat"><span>أكتر جهاز إيرادًا</span><strong style="font-size:17px">${td?esc(td[0]):'—'}</strong></div>
   <div class="stat"><span>أكتر صنف مبيعًا</span><strong style="font-size:17px">${ti?esc(ti[0])+' ('+ti[1]+')':'—'}</strong></div></div>
   <div class="row" style="margin-top:10px"><button class="btn s" data-a="copy">نسخ الملخص</button></div>
   <div id="copybox"></div>
   <h2>العمليات</h2>
-  ${sales.length?`<div class="scroll"><table><thead><tr><th>الوقت</th><th>البند</th><th>المدة</th><th>الإجمالي</th><th></th></tr></thead><tbody>${sales.slice().reverse().map(s=>`<tr><td>${timeStr(s.ts)}</td><td>${s.type==='ps'?esc(s.dev):'كافيه'+(s.dev&&s.dev!=='كافيه'?' · '+esc(s.dev):'')}${s.items.length?`<div class="note">${s.items.map(i=>esc(i.name)+'×'+i.qty).join('، ')}</div>`:''}</td><td>${s.type==='ps'?Math.round(s.mins)+' د':'—'}</td><td>${money(s.timeCost+itemsTotal(s.items))}</td><td style="white-space:nowrap"><button class="btn s" data-a="printsale" data-id="${s.id}">طباعة</button> ${del('s',s.id)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">مفيش عمليات في اليوم ده</div>'}
+  ${sales.length?`<div class="scroll"><table><thead><tr><th>الوقت</th><th>البند</th><th>المدة</th><th>الإجمالي</th><th></th></tr></thead><tbody>${sales.slice().reverse().map(s=>`<tr><td>${timeStr(s.ts)}</td><td>${s.type==='ps'?esc(s.dev):'كافيه'+(s.dev&&s.dev!=='كافيه'?' · '+esc(s.dev):'')}${s.items.length?`<div class="note">${s.items.map(i=>esc(i.name)+'×'+i.qty).join('، ')}</div>`:''}</td><td>${s.type==='ps'?Math.round(s.mins)+' د':'—'}</td><td>${money(s.timeCost+itemsTotal(s.items)-(s.disc||0))}${s.disc?`<div class="note">خصم ${Math.round(s.disc)}</div>`:''}</td><td style="white-space:nowrap"><button class="btn s" data-a="printsale" data-id="${s.id}">طباعة</button> ${del('s',s.id)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">مفيش عمليات في اليوم ده</div>'}
   <h2>المصروفات</h2>
   <form class="form" id="expform"><label>البند<input id="expn" required placeholder="كهرباء، بن، صيانة…"></label><label>المبلغ<input id="expa" type="number" min="0" step="any" required inputmode="decimal"></label><button class="btn p" type="submit">إضافة</button></form>
   ${exps.length?`<div class="scroll" style="margin-top:10px"><table><tbody>${exps.map(e=>`<tr><td>${esc(e.name)}</td><td>${money(e.amount)}</td><td style="text-align:end">${del('e',e.id)}</td></tr>`).join('')}</tbody></table></div>`:''}`;}
@@ -384,16 +398,44 @@ function viewSettings(){
   <div class="row"><button class="btn s" data-a="backup">نسخ كل البيانات</button><button class="btn s" data-a="restoreform">استرجاع من نسخة</button></div>
   <div id="bk" style="margin-top:8px"></div>`;}
 
+function invSub(){return inv.timeCost+itemsTotal(inv.items);}
+function invDisc(){const sub=invSub(),v=Math.max(0,+inv.dval||0);return Math.round(inv.dtype==='pct'?sub*Math.min(100,v)/100:Math.min(sub,v));}
 function viewInvoice(){
   if(!inv)return '';
   const rows=inv.items.map(i=>`<tr><td>${esc(i.name)} × ${i.qty}</td><td>${money(i.price*i.qty)}</td></tr>`).join('');
+  const dd=invDisc();
   return `<div class="overlay"><div class="modal" role="dialog" aria-label="الفاتورة"><div class="name">فاتورة ${esc(inv.dev)}</div>
-  <table class="bill"><tbody>${inv.type==='ps'?`<tr><td>وقت اللعب (${hms(inv.ms)})</td><td>${money(inv.timeCost)}</td></tr>`:''}${rows}</tbody></table>
-  <div class="total"><span>الإجمالي</span><span>${money(inv.timeCost+itemsTotal(inv.items))}</span></div>
+  <table class="bill"><tbody>${inv.type==='ps'?`<tr><td>وقت اللعب (${hms(inv.ms)})</td><td>${money(inv.timeCost)}</td></tr>`:''}${rows}<tr id="invdiscrow" ${dd>0?'':'hidden'}><td>خصم</td><td id="invdisc">-${money(dd)}</td></tr></tbody></table>
+  <div class="form"><label>خصم<input id="dval" type="number" min="0" step="any" inputmode="decimal" value="${inv.dval||''}"></label><label>النوع<select id="dtype"><option value="amt" ${inv.dtype==='pct'?'':'selected'}>جنيه</option><option value="pct" ${inv.dtype==='pct'?'selected':''}>نسبة %</option></select></label></div>
+  <div class="total"><span>الإجمالي</span><span id="invtot">${money(invSub()-dd)}</span></div>
   <div class="row"><button class="btn g" data-a="pay">تم الدفع</button><button class="btn g" data-a="payprint">دفع وطباعة</button></div>
   <div class="row"><button class="btn" data-a="printinv">طباعة بدون دفع</button><button class="btn" data-a="back">رجوع</button></div>
   ${inv.type==='ps'?`<button class="btn x s" data-a="discard" style="align-self:flex-start">${armed==='discard'?'تأكيد إلغاء الجلسة':'إلغاء الجلسة بدون حساب'}</button>`:''}</div></div>`;}
 
+/* time-limit alert */
+let actx=null;const alerted={};
+function unlockAudio(){try{if(!actx){const C=window.AudioContext||window.webkitAudioContext;if(C)actx=new C();}if(actx&&actx.state==='suspended')actx.resume();}catch(e){}}
+['click','touchstart','keydown'].forEach(ev=>document.addEventListener(ev,unlockAudio,{passive:true}));
+function beep(){
+  try{unlockAudio();if(actx)[0,0.35,0.7,1.5,1.85,2.2].forEach(t=>{const o=actx.createOscillator(),g=actx.createGain();o.type='square';o.frequency.value=880;g.gain.value=0.15;o.connect(g);g.connect(actx.destination);o.start(actx.currentTime+t);o.stop(actx.currentTime+t+0.25);});}catch(e){}
+  try{if(navigator.vibrate)navigator.vibrate([300,150,300,150,300]);}catch(e){}
+}
+function askNotify(){try{if('Notification' in window&&Notification.permission==='default')Notification.requestPermission();}catch(e){}}
+function notify(name){try{if('Notification' in window&&Notification.permission==='granted')new Notification('انتهى وقت '+name);}catch(e){}}
+function dueSession(){
+  const now=Date.now();
+  for(const d of S.devices){const se=S.active[d.id];if(!se||!se.limit||se.ack)continue;if(inv&&inv.id===d.id)continue;if(elapsed(se,now)>=se.limit*60000)return {d,se};}
+  return null;
+}
+function viewAlert(){
+  const x=dueSession();if(!x)return '';
+  const id=x.d.id;
+  return `<div class="overlay"><div class="modal" role="alertdialog" aria-label="انتهى الوقت"><div class="name" style="color:var(--danger)">انتهى وقت ${esc(x.d.name)}</div>
+  <div class="note">الوقت المحدد ${x.se.limit} دقيقة خلص. اللعب لسه شغال ومتحسب.</div>
+  <button class="btn g" data-a="stop" data-id="${id}">إنهاء وحساب</button>
+  <div class="row"><button class="btn" data-a="addlimit" data-id="${id}" data-n="15">+15 د</button><button class="btn" data-a="addlimit" data-id="${id}" data-n="30">+30 د</button><button class="btn" data-a="addlimit" data-id="${id}" data-n="60">+60 د</button></div>
+  <div class="row"><button class="btn" data-a="openlimit" data-id="${id}">كمّل مفتوح</button><button class="btn" data-a="ackalert" data-id="${id}">تجاهل</button></div></div></div>`;
+}
 const TABS=[['devices','الأجهزة'],['cafe','الترابيزات'],['report','التقرير'],['history','الأيام'],['settings','الإعدادات']];
 function render(){
   if(mode==='auth'){document.getElementById('root').innerHTML=viewLogin();return;}
@@ -402,13 +444,27 @@ function render(){
   document.getElementById('root').innerHTML=`<header><span class="brand"><img class="logo" src="${LOGO_MARK}" alt="CR7" style="height:34px;width:auto"><h1>كاشير الكافيه والبلايستيشن</h1></span><span class="hd"><span class="badge" id="status"></span><span class="clock" id="clock"></span><button class="btn s" data-a="logout">خروج</button></span></header>
   <nav>${TABS.filter(([k])=>!staff||k==='devices'||k==='cafe').map(([k,l])=>`<button data-a="tab" data-id="${k}" aria-current="${tab===k}">${l}</button>`).join('')}</nav>
   ${banners()}
-  <main>${permErr?'<div class="empty">السيستم مقفول لحد ما قواعد Firestore تتظبط. بعد ما تظبطها حدّث الصفحة.</div>':(ready()||slow)?views[tab]():'<div class="empty">جاري تحميل البيانات…</div>'}</main>${viewInvoice()}`;
+  <main>${permErr?'<div class="empty">السيستم مقفول لحد ما قواعد Firestore تتظبط. بعد ما تظبطها حدّث الصفحة.</div>':(ready()||slow)?views[tab]():'<div class="empty">جاري تحميل البيانات…</div>'}</main>${viewInvoice()}${viewAlert()}`;
   tick();updStatus();
 }
 function tick(){
   const now=Date.now();
   const c=document.getElementById('clock');if(c)c.textContent=new Date(now).toLocaleString('ar-EG',{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
-  document.querySelectorAll('[data-timer]').forEach(el=>{const se=S.active[el.dataset.timer];if(se)el.textContent=hms(elapsed(se,now));});
+  document.querySelectorAll('[data-timer]').forEach(el=>{
+    const se=S.active[el.dataset.timer];if(!se)return;
+    const e=elapsed(se,now),lim=se.limit||0,rem=lim*60000-e;
+    el.textContent=lim>0?(rem>=0?hms(rem):'+'+hms(-rem)):hms(e);
+    el.classList.toggle('over',lim>0&&rem<0);
+    const lb=document.querySelector('[data-tlabel="'+el.dataset.timer+'"]');
+    if(lb)lb.textContent=lim>0?(rem>=0?'متبقي من '+lim+' د':'زيادة عن الوقت'):'وقت اللعب';
+  });
+  S.devices.forEach(d=>{
+    const se=S.active[d.id];if(!se||!se.limit||se.ack)return;
+    if(elapsed(se,now)>=se.limit*60000){
+      const key=d.id+':'+se.limit+':'+se.segs[0].from;
+      if(!alerted[key]){alerted[key]=true;beep();notify(d.name);render();}
+    }
+  });
   document.querySelectorAll('[data-tcost]').forEach(el=>{const se=S.active[el.dataset.tcost];if(se)el.textContent=money(timeCost(se,now));});
 }
 setInterval(tick,1000);
@@ -422,7 +478,14 @@ document.addEventListener('click',e=>{
   const a=b.dataset.a,id=b.dataset.id,now=Date.now();let toPrint=null;
   if(a!=='del'&&a!=='discard')armed=null;
   if(a==='tab'){tab=id;}
-  else if(a==='start'){S.active[id]={segs:[{mode:b.dataset.m,from:now}],items:[]};}
+  else if(a==='start'){
+    const dv=pick[id]===undefined?0:pick[id];const lim=dv==='c'?(pickC[id]||0):(+dv||0);
+    S.active[id]={segs:[{mode:b.dataset.m,from:now}],items:[],limit:lim,ack:false};
+    delete pick[id];delete pickC[id];if(lim>0)askNotify();
+  }
+  else if(a==='addlimit'){const se=S.active[id];if(se){const n=+b.dataset.n,em=Math.ceil(elapsed(se,now)/60000);se.limit=(se.limit>0&&em<=se.limit)?se.limit+n:em+n;se.ack=false;}}
+  else if(a==='openlimit'){const se=S.active[id];if(se){se.limit=0;se.ack=false;}}
+  else if(a==='ackalert'){const se=S.active[id];if(se)se.ack=true;}
   else if(a==='toggle'){const se=S.active[id];const g=se.segs[se.segs.length-1];g.to=now;se.segs.push({mode:g.mode==='S'?'D':'S',from:now});}
   else if(a==='add'){const l=listFor(b.dataset.t),m=S.menu.find(x=>x.id===id);if(l&&m)addTo(l,m);else if(l){const f=l.find(x=>x.id===id);if(f)f.qty++;}}
   else if(a==='dec'){const l=listFor(b.dataset.t);if(l)decFrom(l,id);}
@@ -436,10 +499,10 @@ document.addEventListener('click',e=>{
       inv={type:'ps',dev:d?d.name:id,id,ms,mins:ms/60000,timeCost:Math.round(timeCost(se,now)),items:se.items.map(i=>({...i}))};}
   }
   else if(a==='back'){inv=null;}
-  else if(a==='printinv'){toPrint={id:'',ts:now,type:inv.type,dev:inv.dev,mins:inv.mins,timeCost:inv.timeCost,items:inv.items};}
+  else if(a==='printinv'){toPrint={id:'',ts:now,type:inv.type,dev:inv.dev,mins:inv.mins,timeCost:inv.timeCost,items:inv.items,disc:invDisc()};}
   else if(a==='printsale'){toPrint=S.sales.find(x=>x.id===id)||null;}
   else if(a==='pay'||a==='payprint'){
-    const sale={id:uid(),ts:now,type:inv.type,dev:inv.dev,mins:inv.mins,timeCost:inv.timeCost,items:inv.items};
+    const sale={id:uid(),ts:now,type:inv.type,dev:inv.dev,mins:inv.mins,timeCost:inv.timeCost,items:inv.items,disc:invDisc()};
     S.sales.push(sale);if(a==='payprint')toPrint=sale;
     if(inv.type==='cafe'){if(inv.id==='cafe')S.cart=[];else delete S.orders[inv.id];}else delete S.active[inv.id];
     inv=null;
@@ -473,12 +536,22 @@ document.addEventListener('change',e=>{
   if(t.id==='hmonth'){histMonth=t.value||dayKey(Date.now()).slice(0,7);render();return;}
   if(t.id==='rday'){reportDay=t.value||dayKey(Date.now());render();return;}
   const f=t.dataset&&t.dataset.f;if(!f)return;
+  if(f==='dur'){pick[t.dataset.id]=t.value==='c'?'c':+t.value;render();return;}
+  if(f==='durc'){pickC[t.dataset.id]=Math.max(0,Math.round(+t.value||0));return;}
   if(f==='rateS'||f==='rateD')S[f]=Math.max(0,+t.value||0);
   else if(f==='dev'){const d=S.devices.find(x=>x.id===t.dataset.id);if(d&&t.value.trim())d.name=t.value.trim();}
   else if(f==='tbl'){const d=S.tables.find(x=>x.id===t.dataset.id);if(d&&t.value.trim())d.name=t.value.trim();}
   else if(f==='mname'){const m=S.menu.find(x=>x.id===t.dataset.id);if(m&&t.value.trim())m.name=t.value.trim();}
   else if(f==='mprice'){const m=S.menu.find(x=>x.id===t.dataset.id);if(m)m.price=Math.max(0,+t.value||0);}
   save();
+});
+document.addEventListener('input',e=>{
+  const t=e.target;if(!inv||(t.id!=='dval'&&t.id!=='dtype'))return;
+  if(t.id==='dval')inv.dval=t.value;else inv.dtype=t.value;
+  const dd=invDisc();
+  document.getElementById('invtot').textContent=money(invSub()-dd);
+  document.getElementById('invdiscrow').hidden=!(dd>0);
+  document.getElementById('invdisc').textContent='-'+money(dd);
 });
 document.addEventListener('submit',e=>{
   e.preventDefault();
@@ -493,10 +566,11 @@ document.addEventListener('focusout',()=>{
   setTimeout(()=>{const a=document.activeElement;if(pend&&!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))){pend=false;render();}},60);
 });
 function receiptHTML(s){
-  const tot=s.timeCost+itemsTotal(s.items),d=new Date(s.ts);
+  const tot=s.timeCost+itemsTotal(s.items)-(s.disc||0),d=new Date(s.ts);
+  const dc=s.disc>0?`<tr><td>خصم</td><td>-${Math.round(s.disc)}</td></tr>`:'';
   const rows=s.items.map(i=>`<tr><td>${esc(i.name)} × ${i.qty}</td><td>${Math.round(i.price*i.qty)}</td></tr>`).join('');
   const ps=s.type==='ps'?`<tr><td>وقت اللعب (${Math.round(s.mins)} د)</td><td>${Math.round(s.timeCost)}</td></tr>`:'';
-  return `<div class="rc"><img class="logo" src="${LOGO_MARK}" alt="CR7" style="width:30mm;margin:0 auto 4px"><div class="rm">${d.toLocaleDateString('ar-EG')} · ${timeStr(s.ts)}</div><div class="rm">${esc(s.dev)}${s.id?' · #'+esc(String(s.id).slice(0,5)):''}</div><table>${ps}${rows}</table><div class="rt"><span>الإجمالي</span><span>${Math.round(tot)} ج.م</span></div><div class="rm">شكرًا لزيارتكم</div></div>`;
+  return `<div class="rc"><img class="logo" src="${LOGO_MARK}" alt="CR7" style="width:30mm;margin:0 auto 4px"><div class="rm">${d.toLocaleDateString('ar-EG')} · ${timeStr(s.ts)}</div><div class="rm">${esc(s.dev)}${s.id?' · #'+esc(String(s.id).slice(0,5)):''}</div><table>${ps}${rows}${dc}</table><div class="rt"><span>الإجمالي</span><span>${Math.round(tot)} ج.م</span></div><div class="rm">شكرًا لزيارتكم</div></div>`;
 }
 function printReceipt(s){
   document.getElementById('receipt').innerHTML=receiptHTML(s);

@@ -278,6 +278,13 @@ function bindClosings(){
   dbx.collection('closings').onSnapshot(q=>{closErr=false;closings=q.docs.map(d=>Object.assign({id:d.id},clone(d.data()))).sort((a,b)=>b.ts-a.ts);softRender();},
     e=>{closErr=true;softRender();});
 }
+let permits={};
+function bindPermits(){
+  dbx.collection('permits').onSnapshot(q=>{permits={};q.docs.forEach(d=>{permits[d.id]=clone(d.data());});softRender();},e=>{});
+}
+const isTbl=id=>id==='cafe'||String(id)[0]==='t';
+const permitted=id=>!staff||!!(permits[id]&&permits[id].until>Date.now());
+function denyEdit(){flash='تعديل الأوردر محتاج إذن من صاحب الحساب. كلّمه الأول.';render();}
 function updStatus(){
   const el=document.getElementById('status');if(!el)return;
   let t,c='';
@@ -302,13 +309,12 @@ function banners(){
   if(permErr)h+='<div class="banner e">الحساب ('+esc((auth.currentUser||{}).email||'')+') مش مسموح له بالبيانات. في Firestore افتح Rules وتأكد إن الإيميل ده مكتوب بالظبط جوه القواعد، واضغط Publish، وبعدين حدّث الصفحة.</div>';
   else if(lastErr)h+='<div class="banner e">تعذر الحفظ في السيستم المشترك. اتأكد من النت، واللي عملته ممكن ما يكونش اتحفظ.</div>';
   const lg=mode==='db'&&ready()?legacy():null;
-  if(lg)h+=`<div class="banner">لقيت بيانات قديمة على الجهاز ده (${(lg.sales||[]).length} عملية). <button class="btn s" data-a="migrate">رفعها للسيستم المشترك</button></div>`;
+  if(lg)h+=`<div class="banner">لقيت بيانات قديمة على الجهاز ده (${(lg.sales||[]).length} عملية). دي من النسخة القديمة اللي كانت بتشتغل على الجهاز بس. <button class="btn s" data-a="migrate">رفع العمليات للسيستم</button> <button class="btn s" data-a="skipmig">تجاهل</button></div>`;
   return h;
 }
 function doMigrate(){
   const o=legacy();if(!o)return;
   const L=Object.assign(defaults(),o);
-  ['rateS','rateD','devices','tables','menu'].forEach(k=>{S[k]=L[k];});
   Object.entries(L.active||{}).forEach(([id,se])=>{if(!S.active[id])S.active[id]=se;});
   Object.entries(L.orders||{}).forEach(([id,l])=>{if(l&&l.length&&!(S.orders[id]&&S.orders[id].length))S.orders[id]=l;});
   if(L.cart&&L.cart.length&&!S.cart.length)S.cart=L.cart;
@@ -395,7 +401,8 @@ function viewOpen(){
       <div class="opts" style="margin:2px 0 6px"><span class="note">حاسب لوحده:</span><span class="q"><button data-a="pqdec" data-t="${x.id}" data-id="${i.id}" aria-label="تقليل">−</button><b>${Math.min(pq[i.id]||0,i.qty)}</b><button data-a="pqinc" data-t="${x.id}" data-id="${i.id}" aria-label="زيادة">+</button></span></div></div>`).join('')}</div>
     ${selN?`<button class="btn p" data-a="paysel" data-id="${x.id}" style="width:100%;margin:8px 0">حاسب المحدد (${selN}) · ${money(selT)}</button>`:''}
     <div class="total"><span>الحساب</span><span>${money(t)}</span></div>
-    <div class="row"><button class="btn" data-a="gotbl" data-id="${x.id}">إضافة / تعديل</button><button class="btn" data-a="printorder" data-id="${x.id}">طباعة الأوردر</button></div>
+    ${staff?'':(permits[x.id]&&permits[x.id].until>Date.now()?`<button class="btn x s" data-a="revoke" data-id="${x.id}" style="margin-bottom:8px">سحب إذن التعديل من الكاشير (ساري لحد ${timeStr(permits[x.id].until)})</button>`:`<button class="btn s" data-a="grant" data-id="${x.id}" style="margin-bottom:8px">إدّي الكاشير إذن يعدّل الأوردر ده (10 دقايق)</button>`)}
+    <div class="row"><button class="btn" data-a="gotbl" data-id="${x.id}">${staff?'إضافة طلب / عرض':'إضافة / تعديل'}</button><button class="btn" data-a="printorder" data-id="${x.id}">طباعة الأوردر</button></div>
     <button class="btn g" data-a="stop" data-id="${x.id}" style="margin-top:8px;width:100%">تحصيل / طباعة الدفع</button></div>`;}).join('')}</div>`:'<div class="empty">مفيش حسابات مفتوحة دلوقتي</div>'}`;
 }
 
@@ -437,10 +444,13 @@ const pq={};
 function cafeMain(){
   const id=selTable,name=tblName(id),list=listFor(id)||[],d=draftOf(id);
   const dn=d.reduce((a,i)=>a+i.qty,0),dt=itemsTotal(d),t=itemsTotal(list);
-  const conf=list.length?`<div class="name" style="margin-top:16px">اتأكد على ${esc(name)} · عدّل لو في غلط</div>
-    <div class="items">${list.map(i=>`<div class="dl"><div class="it"><span><b>${esc(i.name)}</b></span><span class="q"><button data-a="dec" data-t="${id}" data-id="${i.id}" aria-label="تقليل">−</button><b>${i.qty}</b><button data-a="inc" data-t="${id}" data-id="${i.id}" aria-label="زيادة">+</button><span style="min-width:56px;text-align:end">${money(i.price*i.qty)}</span><button class="btn x s" data-a="cdel" data-id="${i.id}" aria-label="حذف">حذف</button></span></div>
-      <div class="opts" style="margin:4px 0 8px"><span class="note">السكر:</span>${['ساده','مظبوط','زيادة'].map(v=>`<button class="chip ${i.sugar===v?'on':''}" data-a="csugar" data-id="${i.id}" data-v="${v}">${v}</button>`).join('')}<input data-f="cnote" data-id="${i.id}" placeholder="ملاحظات" value="${esc(i.note||'')}" aria-label="ملاحظات"></div></div>`).join('')}</div>
-    <form class="form" id="mvform" style="margin-top:10px"><label>نقل الطلب لترابيزة رقم<input id="mvnum" type="number" inputmode="numeric" min="1" required></label><button class="btn" type="submit" style="flex:none">نقل</button></form>
+  const can=permitted(id),pm=permits[id];
+  const conf=list.length?`<div class="name" style="margin-top:16px">اتأكد على ${esc(name)}${can?' · عدّل لو في غلط':''}</div>
+    ${can?(staff?`<div class="banner" style="margin:6px 0">صاحب الحساب إداك إذن تعديل لحد ${timeStr(pm.until)}</div>`:''):`<div class="banner" style="margin:6px 0">تعديل الأوردر محتاج إذن من صاحب الحساب. كلّمه وهو يدّيك الإذن من صفحة «الحسابات».</div>`}
+    <div class="items">${list.map(i=>can?`<div class="dl"><div class="it"><span><b>${esc(i.name)}</b></span><span class="q"><button data-a="dec" data-t="${id}" data-id="${i.id}" aria-label="تقليل">−</button><b>${i.qty}</b><button data-a="inc" data-t="${id}" data-id="${i.id}" aria-label="زيادة">+</button><span style="min-width:56px;text-align:end">${money(i.price*i.qty)}</span><button class="btn x s" data-a="cdel" data-id="${i.id}" aria-label="حذف">حذف</button></span></div>
+      <div class="opts" style="margin:4px 0 8px"><span class="note">السكر:</span>${['ساده','مظبوط','زيادة'].map(v=>`<button class="chip ${i.sugar===v?'on':''}" data-a="csugar" data-id="${i.id}" data-v="${v}">${v}</button>`).join('')}<input data-f="cnote" data-id="${i.id}" placeholder="ملاحظات" value="${esc(i.note||'')}" aria-label="ملاحظات"></div></div>`
+      :`<div class="dl"><div class="it"><span>${i.qty} × <b>${esc(i.name)}</b>${optTxt(i)?`<div class="note">${esc(optTxt(i))}</div>`:''}</span><span>${money(i.price*i.qty)}</span></div></div>`).join('')}</div>
+    ${can?`<form class="form" id="mvform" style="margin-top:10px"><label>نقل الطلب لترابيزة رقم<input id="mvnum" type="number" inputmode="numeric" min="1" required></label><button class="btn" type="submit" style="flex:none">نقل</button></form>`:''}
     <div class="total"><span>حساب ${esc(name)}</span><span>${money(t)}</span></div>
     <div class="row"><button class="btn" data-a="printorder" data-id="${id}">طباعة الأوردر</button><button class="btn g" data-a="stop" data-id="${id}">تحصيل / طباعة الدفع</button></div>`:'';
   return `<div class="card"><div class="name">${esc(name)} · المنيو</div>
@@ -543,27 +553,33 @@ function viewInvoice(){
 
 /* ---- bills (cashier: today's invoices, read-only) ---- */
 function viewBills(){
-  const day=dayKey(Date.now()),sales=S.sales.filter(x=>dayKey(x.ts)===day);
+  const from=lastCloseTs(),day=dayKey(Date.now()),sales=S.sales.filter(x=>x.ts>from);
   const tot=sales.reduce((a,x)=>a+x.timeCost+itemsTotal(x.items)-(x.disc||0),0);
-  return `<div class="note" style="margin-bottom:10px">فواتير النهاردة · ${wdName(day)} · <span dir="ltr">${day}</span> (عرض وطباعة فقط)</div>
-  <div class="stats"><div class="stat main"><span>إجمالي النهاردة</span><strong>${money(tot)}</strong></div><div class="stat"><span>عدد الفواتير</span><strong>${sales.length}</strong></div></div>
+  return `<div class="note" style="margin-bottom:10px">فواتير الوردية الحالية · من ${timeStr(from)} ${wdName(dayKey(from))} (عرض وطباعة فقط). بعد التقفيل بتتصفّر.</div>
+  <div class="stats"><div class="stat main"><span>إجمالي الوردية</span><strong>${money(tot)}</strong></div><div class="stat"><span>عدد الفواتير</span><strong>${sales.length}</strong></div></div>
   <h2>الفواتير</h2>
-  ${sales.length?`<div class="scroll"><table><thead><tr><th>الوقت</th><th>البند</th><th>المدة</th><th>الإجمالي</th><th></th></tr></thead><tbody>${sales.slice().reverse().map(x=>`<tr><td>${timeStr(x.ts)}</td><td>${x.type==='ps'?esc(x.dev):'كافيه'+(x.dev&&x.dev!=='كافيه'?' · '+esc(x.dev):'')}${x.items.length?`<div class="note">${x.items.map(i=>esc(i.name)+'×'+i.qty).join('، ')}</div>`:''}</td><td>${x.type==='ps'?Math.round(x.mins)+' د':'—'}</td><td>${money(x.timeCost+itemsTotal(x.items)-(x.disc||0))}${x.disc?`<div class="note">خصم ${Math.round(x.disc)}</div>`:''}</td><td><button class="btn s" data-a="printsale" data-id="${x.id}">طباعة</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">مفيش فواتير النهاردة لسه</div>'}`;
+  ${sales.length?`<div class="scroll"><table><thead><tr><th>الوقت</th><th>البند</th><th>المدة</th><th>الإجمالي</th><th></th></tr></thead><tbody>${sales.slice().reverse().map(x=>`<tr><td>${timeStr(x.ts)}</td><td>${x.type==='ps'?esc(x.dev):'كافيه'+(x.dev&&x.dev!=='كافيه'?' · '+esc(x.dev):'')}${x.items.length?`<div class="note">${x.items.map(i=>esc(i.name)+'×'+i.qty).join('، ')}</div>`:''}</td><td>${x.type==='ps'?Math.round(x.mins)+' د':'—'}</td><td>${money(x.timeCost+itemsTotal(x.items)-(x.disc||0))}${x.disc?`<div class="note">خصم ${Math.round(x.disc)}</div>`:''}</td><td><button class="btn s" data-a="printsale" data-id="${x.id}">طباعة</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">مفيش فواتير في الوردية دي لسه</div>'}`;
 }
 
 /* ---- daily close ---- */
 function fmtH(m){m=Math.round(m);const h=Math.floor(m/60),r=m%60;return (h?h+' ساعة':'')+(h&&r?' و ':'')+(r||!h?r+' دقيقة':'');}
-function summarize(day){
-  const sales=S.sales.filter(x=>dayKey(x.ts)===day);
+const startOfDay=()=>{const d=new Date();d.setHours(0,0,0,0);return d.getTime();};
+const lastCloseTs=()=>closings.reduce((a,c)=>Math.max(a,c.ts||0),0)||(startOfDay()-86400000);
+const shiftName=v=>v==='am'?'صباحي':v==='pm'?'مسائي':'';
+let shiftSel='',cflash='';
+const defShift=()=>{const h=new Date().getHours();return h>=6&&h<18?'am':'pm';};
+function summarize(from,to){
+  to=to||Date.now();
+  const sales=S.sales.filter(x=>x.ts>from&&x.ts<=to);
   const items={},devs={};let mins=0,ps=0,cf=0,ds=0;
   sales.forEach(x=>{
     ps+=x.timeCost;cf+=itemsTotal(x.items);ds+=(x.disc||0);
     if(x.type==='ps'){mins+=x.mins||0;const d=devs[x.dev]||(devs[x.dev]={mins:0,cost:0});d.mins+=x.mins||0;d.cost+=x.timeCost;}
     x.items.forEach(i=>items[i.name]=(items[i.name]||0)+i.qty);
   });
-  const exps=S.expenses.filter(e=>dayKey(e.ts)===day).map(e=>({name:e.name,amount:Math.round(e.amount)}));
+  const exps=S.expenses.filter(e=>e.ts>from&&e.ts<=to).map(e=>({name:e.name,amount:Math.round(e.amount)}));
   const ex=exps.reduce((a,e)=>a+e.amount,0),total=Math.round(ps+cf-ds);
-  return {day,n:sales.length,mins:Math.round(mins),ps:Math.round(ps),cf:Math.round(cf),ds:Math.round(ds),total,ex,exps,net:total-ex,items,devs};
+  return {day:dayKey(to),from,to,n:sales.length,mins:Math.round(mins),ps:Math.round(ps),cf:Math.round(cf),ds:Math.round(ds),total,ex,exps,net:total-ex,items,devs};
 }
 function countsHTML(c){
   const its=Object.entries(c.items).sort((a,b)=>b[1]-a[1]);
@@ -587,28 +603,33 @@ function closeText(c){
 function closingCard(c){
   const diff=c.cash!=null?c.cash-(c.total-(c.ex||0)):null;
   const del=!staff?`<button class="btn x s" data-a="delclose" data-id="${c.id}">${armed==='cl'+c.id?'تأكيد الحذف':'حذف'}</button>`:'';
-  return `<details class="card"><summary style="cursor:pointer"><b>${wdName(c.day)} <span dir="ltr">${c.day}</span></b> · قُفل ${timeStr(c.ts)} · ${esc(c.by||'')}<div class="note">إجمالي ${money(c.total)}${diff!=null?' · الفرق في الدرج '+(diff>0?'+':'')+Math.round(diff):''}</div></summary>
+  return `<details class="card"><summary style="cursor:pointer"><b>${c.shift?'وردية '+shiftName(c.shift)+' · ':''}${wdName(c.day)} <span dir="ltr">${c.day}</span></b> · ${c.from?'من '+timeStr(c.from)+' ':''}لحد ${timeStr(c.ts)} · ${esc(c.by||'')}<div class="note">إجمالي ${money(c.total)}${diff!=null?' · الفرق في الدرج '+(diff>0?'+':'')+Math.round(diff):''}</div></summary>
   <div style="margin-top:10px">${countsHTML(c)}${c.cash!=null?`<div class="note" style="margin-top:8px">الموجود في الدرج: ${money(c.cash)} · ${diff===0?'مظبوط':diff>0?'زيادة '+Math.round(diff):'عجز '+Math.round(-diff)}</div>`:''}${c.note?`<div class="note">ملاحظة: ${esc(c.note)}</div>`:''}
   <div class="row" style="margin-top:8px"><button class="btn s" data-a="printclose" data-id="${c.id}">طباعة التقفيل</button>${del}</div></div></details>`;
 }
 function viewClose(){
-  const today=dayKey(Date.now()),c=summarize(today);
-  const busy=Object.keys(S.active).length;
-  const list=staff?closings.filter(x=>x.day===today):closings.slice(0,40);
-  const doneToday=closings.some(x=>x.day===today);
+  const from=lastCloseTs(),c=summarize(from),now=Date.now();
+  const busy=Object.keys(S.active).length,sh=shiftSel||defShift();
+  const recent=staff?closings.filter(x=>x.ts>now-36*3600000):closings.slice(0,60);
+  let hist='';
+  if(staff)hist=recent.map(closingCard).join('');
+  else{const days={};recent.forEach(x=>{(days[x.day]=days[x.day]||[]).push(x);});
+    hist=Object.entries(days).map(([d,l])=>`<div class="note" style="margin:12px 0 4px"><b>${wdName(d)} <span dir="ltr">${d}</span></b> · ${l.length} تقفيل · إجمالي اليوم ${money(l.reduce((a,x)=>a+x.total,0))} · مصروفات ${money(l.reduce((a,x)=>a+(x.ex||0),0))}</div>${l.map(closingCard).join('')}`).join('');}
   return `${closErr?'<div class="banner e">مش قادر أقرا/أسجل التقفيلات. حدّث قواعد Firestore (الخطوة اللي بعتهالك) واضغط Publish.</div>':''}
-  <div class="note" style="margin-bottom:10px">${wdName(today)} · <span dir="ltr">${today}</span> · ${doneToday?'اتقفل النهاردة ✓ (ممكن تقفل تاني لو في شغل بعد التقفيل)':'لسه ما اتقفلش'}</div>
+  ${cflash?`<div class="banner">${esc(cflash)}</div>`:''}
+  <div class="note" style="margin-bottom:10px">الوردية الحالية: من ${timeStr(from)} · ${wdName(dayKey(from))} <span dir="ltr">${dayKey(from)}</span>${closings.length?' (من آخر تقفيل)':''}</div>
   ${busy?`<div class="banner">في ${busy} جلسة/جلسات شغالة لسه — اللي لسه ما اتحاسبش مش هيدخل في التقفيل.</div>`:''}
   ${countsHTML(c)}
-  <h2 style="margin-top:12px">مصروفات النهاردة</h2>
+  <h2 style="margin-top:12px">مصروفات الوردية</h2>
   <form class="form" id="expform"><label>البند<input id="expn" required placeholder="بن، مياه، صيانة…"></label><label>المبلغ<input id="expa" type="number" min="0" step="any" required inputmode="decimal"></label><button class="btn p" type="submit">إضافة مصروف</button></form>
-  ${c.exps.length?`<div class="scroll" style="margin-top:10px"><table><tbody>${S.expenses.filter(e=>dayKey(e.ts)===today).map(e=>`<tr><td>${esc(e.name)}</td><td>${money(e.amount)}</td><td style="text-align:end">${staff?'':`<button class="btn x s" data-a="del" data-k="e" data-id="${e.id}">${armed==='e'+e.id?'تأكيد الحذف':'حذف'}</button>`}</td></tr>`).join('')}</tbody></table></div>`:'<div class="note">مفيش مصروفات النهاردة لسه</div>'}
-  <div class="row" style="margin-top:10px"><button class="btn" data-a="printclose" data-id="live">طباعة ملخص اليوم كله</button></div>
-  <h2 style="margin-top:12px">تقفيل اليوم</h2>
-  <form class="form" id="closeform"><label>الموجود فعلًا في الدرج (اختياري)<input id="ccash" type="number" min="0" step="any" inputmode="decimal"></label><label>ملاحظة (اختياري)<input id="cnote"></label><button class="btn p" type="submit">تقفيل اليوم</button></form>
-  <div class="note">التقفيل بيتسجل ومبيتعدلش من الكاشير، وصاحب الحساب الرئيسي بيشوفه.</div>
-  <h2 style="margin-top:14px">${staff?'تقفيلات النهاردة':'التقفيلات السابقة'}</h2>
-  ${list.length?list.map(closingCard).join(''):'<div class="empty">مفيش تقفيلات لسه</div>'}`;
+  ${c.exps.length?`<div class="scroll" style="margin-top:10px"><table><tbody>${S.expenses.filter(e=>e.ts>from).map(e=>`<tr><td>${esc(e.name)}</td><td>${money(e.amount)}</td><td style="text-align:end">${staff?'':`<button class="btn x s" data-a="del" data-k="e" data-id="${e.id}">${armed==='e'+e.id?'تأكيد الحذف':'حذف'}</button>`}</td></tr>`).join('')}</tbody></table></div>`:'<div class="note">مفيش مصروفات في الوردية دي لسه</div>'}
+  <div class="row" style="margin-top:10px"><button class="btn" data-a="printclose" data-id="live">طباعة ملخص الوردية الحالية</button></div>
+  <h2 style="margin-top:12px">تقفيل الوردية</h2>
+  <div class="row"><button class="btn ${sh==='am'?'p':''}" data-a="shift" data-id="am">☀️ وردية صباحي</button><button class="btn ${sh==='pm'?'p':''}" data-a="shift" data-id="pm">🌙 وردية مسائي</button></div>
+  <form class="form" id="closeform" style="margin-top:8px"><label>الموجود فعلًا في الدرج (اختياري)<input id="ccash" type="number" min="0" step="any" inputmode="decimal"></label><label>ملاحظة (اختياري)<input id="cnote"></label><button class="btn p" type="submit">تقفيل الوردية ${shiftName(sh)} وتصفير العمليات</button></form>
+  <div class="note">بعد التقفيل العمليات والفواتير والمصروفات بتبدأ من الصفر للوردية الجاية، ومبتتحسبش مرتين. التقفيل بيتسجل ومبيتعدلش من الكاشير، وصاحب الحساب بيشوفه.</div>
+  <h2 style="margin-top:14px">${staff?'تقفيلات آخر 36 ساعة':'التقفيلات السابقة'}</h2>
+  ${hist||'<div class="empty">مفيش تقفيلات لسه</div>'}`;
 }
 
 /* time-limit alert */
@@ -679,7 +700,7 @@ document.addEventListener('click',e=>{
   const b=e.target.closest('[data-a]');if(!b)return;
   const a=b.dataset.a,id=b.dataset.id,now=Date.now();let toPrint=null;
   if(a!=='del'&&a!=='discard'&&a!=='delclose'&&a!=='importmenu')armed=null;
-  if(a==='tab'){tab=id;}
+  if(a==='tab'){tab=id;cflash='';flash='';}
   else if(a==='start'){
     const dv=pick[id]===undefined?0:pick[id];const lim=dv==='c'?(pickC[id]||0):(+dv||0);
     S.active[id]={segs:[{mode:b.dataset.m,from:now}],items:[],limit:lim,ack:false};
@@ -690,10 +711,10 @@ document.addEventListener('click',e=>{
   else if(a==='ackalert'){const se=S.active[id];if(se)se.ack=true;}
   else if(a==='toggle'){const se=S.active[id];const g=se.segs[se.segs.length-1];g.to=now;se.segs.push({mode:g.mode==='S'?'D':'S',from:now});}
   else if(a==='add'){const l=listFor(b.dataset.t),m=S.menu.find(x=>x.id===id);if(l&&m){addTo(l,m,opt.sugar,opt.note);opt.sugar='';opt.note='';}}
-  else if(a==='inc'){const l=listFor(b.dataset.t);const f=l&&l.find(x=>x.id===id);if(f)f.qty++;}
+  else if(a==='inc'){if(isTbl(b.dataset.t)&&!permitted(b.dataset.t)){denyEdit();return;}const l=listFor(b.dataset.t);const f=l&&l.find(x=>x.id===id);if(f)f.qty++;}
   else if(a==='sugar'){opt.sugar=opt.sugar===id?'':id;}
-  else if(a==='dec'){const l=listFor(b.dataset.t);if(l)decFrom(l,id);}
-  else if(a==='clearcart'){if(id==='cafe')S.cart=[];else delete S.orders[id];}
+  else if(a==='dec'){if(isTbl(b.dataset.t)&&!permitted(b.dataset.t)){denyEdit();return;}const l=listFor(b.dataset.t);if(l)decFrom(l,id);}
+  else if(a==='clearcart'){if(!permitted(id)){denyEdit();return;}if(id==='cafe')S.cart=[];else delete S.orders[id];}
   else if(a==='seltable'){selTable=id;flash='';}
   else if(a==='tables20'){while(S.tables.length<20)S.tables.push({id:'t'+uid(),name:'ترابيزة '+(S.tables.length+1)});}
   else if(a==='addtable'){S.tables.push({id:'t'+uid(),name:'ترابيزة '+(S.tables.length+1)});}
@@ -737,6 +758,11 @@ document.addEventListener('click',e=>{
     if(armed==='cl'+id){armed=null;if(dbx)dbx.doc('closings/'+id).delete().catch(()=>{closErr=true;softRender();});closings=closings.filter(x=>x.id!==id);}
     else armed='cl'+id;
     render();return;}
+  else if(a==='migrate'){doMigrate();return;}
+  else if(a==='skipmig'){try{localStorage.setItem(MIGRATED,'1');}catch(e){}}
+  else if(a==='grant'){const u=Date.now()+10*60000;permits[id]={until:u,by:((auth.currentUser||{}).email)||''};if(dbx)dbx.doc('permits/'+id).set(permits[id]).catch(()=>{});}
+  else if(a==='revoke'){delete permits[id];if(dbx)dbx.doc('permits/'+id).delete().catch(()=>{});}
+  else if(a==='shift'){shiftSel=id;}
   else if(a==='gotbl'){selTable=id;tab='cafe';flash='';}
   else if(a==='dadd'){
     const m=S.menu.find(x=>x.id===id),d=draftOf(selTable);
@@ -754,8 +780,8 @@ document.addEventListener('click',e=>{
     if(items.length)inv={type:'cafe',dev:tblName(id)+' (جزء)',id,parts,ms:0,mins:0,timeCost:0,items};
   }
   else if(a==='mcat'){mcat=id;msq='';}
-  else if(a==='cdel'){const l=listFor(selTable);const f=l&&l.find(x=>x.id===id);if(f)l.splice(l.indexOf(f),1);}
-  else if(a==='csugar'){const l=listFor(selTable),f=l&&l.find(x=>x.id===id);if(f){if(f.sugar===b.dataset.v)delete f.sugar;else f.sugar=b.dataset.v;}}
+  else if(a==='cdel'){if(!permitted(selTable)){denyEdit();return;}const l=listFor(selTable);const f=l&&l.find(x=>x.id===id);if(f)l.splice(l.indexOf(f),1);}
+  else if(a==='csugar'){if(!permitted(selTable)){denyEdit();return;}const l=listFor(selTable),f=l&&l.find(x=>x.id===id);if(f){if(f.sugar===b.dataset.v)delete f.sugar;else f.sugar=b.dataset.v;}}
   else if(a==='dclear'){drafts[id]=[];}
   else if(a==='confirmorder'){
     const d=draftOf(id);
@@ -773,7 +799,7 @@ document.addEventListener('click',e=>{
     if(l.length)pHTML=orderHTML(nm,l);
   }
   else if(a==='printclose'){
-    const c=id==='live'?Object.assign(summarize(dayKey(now)),{ts:now,by:((auth.currentUser||{}).email)||''}):closings.find(x=>x.id===id);
+    const c=id==='live'?Object.assign(summarize(lastCloseTs()),{ts:now,by:((auth.currentUser||{}).email)||'',shift:shiftSel||defShift()}):closings.find(x=>x.id===id);
     if(c)pHTML=closeReceiptHTML(c);
   }
   else if(a==='logout'){signOut(auth);return;}
@@ -796,7 +822,7 @@ document.addEventListener('change',e=>{
   const f=t.dataset&&t.dataset.f;if(!f)return;
   if(f==='onote'){opt.note=t.value;return;}
   if(f==='dnote')return;
-  if(f==='cnote'){const l=listFor(selTable),it=l&&l.find(x=>x.id===t.dataset.id);if(it){if(t.value.trim())it.note=t.value.trim();else delete it.note;save();}return;}
+  if(f==='cnote'){if(!permitted(selTable))return;const l=listFor(selTable),it=l&&l.find(x=>x.id===t.dataset.id);if(it){if(t.value.trim())it.note=t.value.trim();else delete it.note;save();}return;}
   if(f==='dur'){pick[t.dataset.id]=t.value==='c'?'c':+t.value;render();return;}
   if(f==='durc'){pickC[t.dataset.id]=Math.max(0,Math.round(+t.value||0));return;}
   if(f==='rateS'||f==='rateD')S[f]=Math.max(0,+t.value||0);
@@ -825,17 +851,18 @@ document.addEventListener('input',e=>{
   document.getElementById('invdisc').textContent='-'+money(dd);
 });
 document.addEventListener('submit',e=>{
-  if(e.target.id==='mvform'){e.preventDefault();const to=tblIdFor(document.getElementById('mvnum').value);if(to&&to!==selTable){moveTable(selTable,to);save();}render();return;}
+  if(e.target.id==='mvform'){e.preventDefault();if(!permitted(selTable)){denyEdit();return;}const to=tblIdFor(document.getElementById('mvnum').value);if(to&&to!==selTable){moveTable(selTable,to);save();}render();return;}
   if(e.target.id==='tform'){e.preventDefault();const tid=tblIdFor(document.getElementById('tnum').value);if(tid){selTable=tid;flash='';}document.activeElement&&document.activeElement.blur&&document.activeElement.blur();render();return;}
   if(e.target.id==='closeform'){
     e.preventDefault();
-    const now=Date.now(),c=summarize(dayKey(now)),cashV=document.getElementById('ccash').value,note=document.getElementById('cnote').value.trim();
-    const doc=Object.assign(c,{ts:now,by:((auth.currentUser||{}).email)||'محلي'});
+    const now=Date.now(),c=summarize(lastCloseTs(),now),cashV=document.getElementById('ccash').value,note=document.getElementById('cnote').value.trim();
+    const doc=Object.assign(c,{ts:now,by:((auth.currentUser||{}).email)||'محلي',shift:shiftSel||defShift()});
     if(cashV!=='')doc.cash=Math.round(+cashV||0);
     if(note)doc.note=note;
     const id=c.day+'-'+now;
     closings.unshift(Object.assign({id},doc));
     if(dbx)dbx.doc('closings/'+id).set(doc).catch(()=>{closErr=true;softRender();});
+    cflash='اتقفلت الوردية '+shiftName(doc.shift)+' واتصفّرت العمليات ✓ (الإجمالي '+doc.total+' ج.م)';shiftSel='';
     render();return;
   }
   e.preventDefault();
@@ -859,7 +886,7 @@ function receiptHTML(s){
 function closeReceiptHTML(c){
   const its=Object.entries(c.items||{}).sort((a,b)=>b[1]-a[1]),dv=Object.entries(c.devs||{}),d=new Date(c.ts||Date.now());
   const diff=c.cash!=null?c.cash-(c.total-(c.ex||0)):null;
-  return `<div class="rc"><img class="logo" src="${LOGO_MARK}" alt="CR7" style="width:30mm;margin:0 auto 4px"><h2>تقفيل يوم</h2><div class="rm">${wdName(c.day)} ${esc(c.day)}</div><div class="rm">طُبع ${d.toLocaleDateString('ar-EG')} ${timeStr(d.getTime())}${c.by?' · '+esc(c.by):''}</div>
+  return `<div class="rc"><img class="logo" src="${LOGO_MARK}" alt="CR7" style="width:30mm;margin:0 auto 4px"><h2>تقفيل ${c.shift?'وردية '+shiftName(c.shift):'يوم'}</h2><div class="rm">${wdName(c.day)} ${esc(c.day)}</div>${c.from?`<div class="rm">من ${timeStr(c.from)} إلى ${timeStr(c.to||c.ts)}</div>`:''}<div class="rm">طُبع ${d.toLocaleDateString('ar-EG')} ${timeStr(d.getTime())}${c.by?' · '+esc(c.by):''}</div>
   <table><tr><td><b>بلايستيشن</b></td><td><b>${fmtH(c.mins)}</b></td></tr>${dv.map(([n,x])=>`<tr><td>· ${esc(n)}</td><td>${fmtH(x.mins)}</td></tr>`).join('')}${its.map(([n,q])=>`<tr><td>${esc(n)}</td><td><b>${q}</b></td></tr>`).join('')}</table>
   <table><tr><td>بلايستيشن</td><td>${c.ps}</td></tr><tr><td>كافيه</td><td>${c.cf}</td></tr><tr><td>خصومات</td><td>-${c.ds}</td></tr><tr><td>عدد الفواتير</td><td>${c.n}</td></tr>${c.ex?`<tr><td>مصروفات</td><td>-${c.ex}</td></tr>${(c.exps||[]).map(e=>`<tr><td>· ${esc(e.name)}</td><td>${e.amount}</td></tr>`).join('')}`:''}${c.cash!=null?`<tr><td>الموجود في الدرج</td><td>${c.cash}</td></tr><tr><td>الفرق</td><td>${diff>0?'+':''}${diff}</td></tr>`:''}</table>
   <div class="rt"><span>الإجمالي</span><span>${c.total} ج.م</span></div>${c.ex?`<div class="rt"><span>الصافي</span><span>${c.total-c.ex} ج.م</span></div>`:''}${c.note?`<div class="rm">ملاحظة: ${esc(c.note)}</div>`:''}</div>`;
@@ -892,7 +919,7 @@ function doLogin(){
 let signedIn=false;
 onAuthStateChanged(auth,user=>{
   if(user){
-    staff=!ADMIN_EMAILS.includes(String(user.email||'').toLowerCase());signedIn=true;dbx=makeDb();mode='db';bind();bindClosings();render();
+    staff=!ADMIN_EMAILS.includes(String(user.email||'').toLowerCase());signedIn=true;dbx=makeDb();mode='db';bind();bindClosings();bindPermits();render();
     setTimeout(()=>{if(!ready()){slow=true;render();}},10000);
   }else{
     if(signedIn){location.reload();return;}

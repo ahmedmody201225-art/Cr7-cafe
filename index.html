@@ -432,14 +432,9 @@ function stLog(mid,type,delta,after){
 }
 function stockAction(a,id){
   if(!dbx)return;
-  if(a==='stcat'){
-    const cat=(document.getElementById('stcatsel')||{}).value;if(!cat)return;
-    S.menu.filter(m=>(m.cat||'أخرى')===cat&&!stockMap[m.id]).forEach(m=>dbx.doc('stock/'+m.id).set({qty:0,min:0,name:m.name,cat:m.cat||''}).catch(()=>{}));
-    return;
-  }
   const s=stockMap[id];if(!s)return;
   if(a==='stdel'){if(armed==='st'+id){armed=null;dbx.doc('stock/'+id).delete().catch(()=>{});}else armed='st'+id;return;}
-  const inp=document.querySelector('[data-f="stq"][data-id="'+id+'"]'),v=inp?Math.round(+inp.value):NaN;
+  const inp=document.querySelector('[data-f="stq"][data-id="'+id+'"]'),v=inp?(+inp.value):NaN;
   if(isNaN(v)||inp.value==='')return;
   if(a==='stin'&&v>0){stockAdd(id,v);stLog(id,'in',v,s.qty+v);}
   else if(a==='stset'&&v>=0){const d=v-s.qty;if(d){stockAdd(id,d);stLog(id,'adj',d,v);}}
@@ -453,14 +448,15 @@ function viewStock(){
   const out=ids.filter(m=>stockMap[m].qty<=0).length,low=lowList().length-out;
   const menuCats=[...new Set(S.menu.map(m=>m.cat||'أخرى'))];
   const free=S.menu.filter(m=>!stockMap[m.id]);
-  const rowH=m=>{const s=stockMap[m];return `<div class="st"><div class="stn"><b>${esc(stName(m))}</b><div class="note">حد أدنى ${s.min||0}</div></div><span class="sq ${stCls(s)}">${s.qty}</span>${staff?'':`<div class="stc"><input data-f="stq" data-id="${m}" type="number" min="0" inputmode="numeric" placeholder="الكمية" aria-label="الكمية"><button class="btn s" data-a="stin" data-id="${m}">+ توريد</button><button class="btn s" data-a="stset" data-id="${m}">جرد = </button><input data-f="stmin" data-id="${m}" type="number" min="0" inputmode="numeric" value="${s.min||0}" title="حد أدنى" aria-label="حد أدنى" style="max-width:64px"><button class="btn x s" data-a="stdel" data-id="${m}">${armed==='st'+m?'تأكيد':'إيقاف'}</button></div>`}</div>`;};
+  const rowH=m=>{const s=stockMap[m];return `<div class="st"><div class="stn"><b>${esc(stName(m))}</b><div class="note">${s.custom?'يدوي · ':''}حد أدنى ${s.min||0}${s.unit?' '+esc(s.unit):''}</div></div><span class="sq ${stCls(s)}">${s.qty}</span>${staff?'':`<div class="stc"><input data-f="stq" data-id="${m}" type="number" min="0" step="any" inputmode="decimal" placeholder="الكمية" aria-label="الكمية"><button class="btn s" data-a="stin" data-id="${m}">+ توريد</button><button class="btn s" data-a="stset" data-id="${m}">جرد = </button><input data-f="stmin" data-id="${m}" type="number" min="0" step="any" inputmode="decimal" value="${s.min||0}" title="حد أدنى" aria-label="حد أدنى" style="max-width:64px"><button class="btn x s" data-a="stdel" data-id="${m}">${armed==='st'+m?'تأكيد':'إيقاف'}</button></div>`}</div>`;};
   return `${stockErr?'<div class="banner e">مش قادر أقرا المخزون. ضيف قواعد stock و stocklog في Firestore واضغط Publish.</div>':''}
   <div class="stats"><div class="stat main"><span>أصناف في المخزون</span><strong>${ids.length}</strong></div><div class="stat"><span>قرّبت تخلص</span><strong>${low}</strong></div><div class="stat"><span>خلصت</span><strong>${out}</strong></div></div>
   <div class="row" style="margin:10px 0"><button class="btn p" data-a="printstock">طباعة الجرد</button><button class="btn" data-a="printlow">طباعة النواقص</button></div>
-  ${staff?'':`<h2>إضافة صنف للمخزون</h2>
+  ${staff?'':`<h2>إضافة صنف من المنيو (بيتخصم لوحده)</h2>
   <form class="form" id="stform"><label>الصنف<select id="stitem" required><option value="">اختار…</option>${menuCats.map(c=>`<optgroup label="${esc(c)}">${free.filter(m=>(m.cat||'أخرى')===c).map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</optgroup>`).join('')}</select></label><label>الكمية الحالية<input id="stqty" type="number" min="0" inputmode="numeric" value="0"></label><label>حد التنبيه<input id="stmn" type="number" min="0" inputmode="numeric" value="3"></label><button class="btn p" type="submit">إضافة</button></form>
-  <div class="form" style="margin-top:8px"><label>أو ضيف قسم كامل (بكمية 0)<select id="stcatsel">${menuCats.map(c=>`<option>${esc(c)}</option>`).join('')}</select></label><button class="btn" data-a="stcat">إضافة القسم</button></div>
-  <div class="note">الأصناف اللي بتتضاف هنا بتتخصم لوحدها لما الطلب يتأكد (أو يتضاف على جهاز)، وبترجع لو الصنف اتشال أو اتقلّل.</div>`}
+  <h2 style="margin-top:12px">إضافة صنف تاني (مستلزمات)</h2>
+  <form class="form" id="stnew"><label>اسم الصنف<input id="snn" required placeholder="بن، سكر، لبن، أكواب…"></label><label>الوحدة<input id="snu" placeholder="كيلو، علبة، قطعة"></label><label>القسم<input id="snc" list="stcats" placeholder="مستلزمات"></label><datalist id="stcats">${[...new Set([...menuCats,...Object.values(stockMap).map(x=>x.cat).filter(Boolean)])].map(c=>`<option value="${esc(c)}">`).join('')}</datalist><label>الكمية الحالية<input id="snq" type="number" min="0" step="any" inputmode="decimal" value="0"></label><label>حد التنبيه<input id="snm" type="number" min="0" step="any" inputmode="decimal" value="1"></label><button class="btn p" type="submit">إضافة</button></form>
+  <div class="note">أصناف المنيو بتتخصم لوحدها لما الطلب يتأكد (أو يتضاف على جهاز)، وبترجع لو الصنف اتشال أو اتقلّل. أصناف المستلزمات بتتحرك يدوي (توريد وجرد).</div>`}
   ${order.length?order.map(c=>`<h2 style="margin-top:12px">${esc(c)}</h2><div class="card">${cats[c].sort((a,b)=>stName(a).localeCompare(stName(b),'ar')).map(rowH).join('')}</div>`).join(''):'<div class="empty">لسه مفيش أصناف في المخزون'+(staff?'':'. ضيف من فوق.')+'</div>'}
   ${staff?'':`<h2 style="margin-top:14px">آخر حركات المخزون</h2>
   ${stockLog.length?`<div class="scroll"><table><thead><tr><th>الوقت</th><th>الصنف</th><th>الحركة</th><th>الكمية</th><th>الرصيد</th></tr></thead><tbody>${stockLog.map(l=>`<tr><td>${new Date(l.ts).toLocaleDateString('ar-EG')} ${timeStr(l.ts)}</td><td>${esc(l.name||'')}</td><td>${STTYPE[l.type]||l.type}</td><td>${l.delta>0?'+':''}${l.delta}</td><td>${l.after}</td></tr>`).join('')}</tbody></table></div>`:'<div class="note">مفيش حركات لسه</div>'}`}`;
@@ -470,7 +466,7 @@ function stockHTML(onlyLow){
   ids.forEach(m=>{const c=stCat(m);(cats[c]=cats[c]||[]).push(m);});
   const d=new Date(),order=Object.keys(cats).sort((a,b)=>(a==='أخرى')-(b==='أخرى'));
   return `<div class="rc"><img class="logo" src="${LOGO_MARK}" alt="CR7" style="width:30mm;margin:0 auto 4px"><h2>${onlyLow?'النواقص':'جرد المخزون'}</h2><div class="rm">${d.toLocaleDateString('ar-EG')} · ${timeStr(d.getTime())}</div>
-  <table><tr><td><b>الصنف</b></td><td><b>بالسيستم</b></td><td><b>الفعلي</b></td></tr>${order.map(c=>`<tr><td colspan="3" style="background:#ddd;padding:2px 4px"><b>${esc(c)}</b></td></tr>${cats[c].sort((a,b)=>stName(a).localeCompare(stName(b),'ar')).map(m=>`<tr><td>${esc(stName(m))}</td><td>${stockMap[m].qty}</td><td style="border-bottom:1px solid #000;width:22mm"></td></tr>`).join('')}`).join('')}</table>
+  <table><tr><td><b>الصنف</b></td><td><b>بالسيستم</b></td><td><b>الفعلي</b></td></tr>${order.map(c=>`<tr><td colspan="3" style="background:#ddd;padding:2px 4px"><b>${esc(c)}</b></td></tr>${cats[c].sort((a,b)=>stName(a).localeCompare(stName(b),'ar')).map(m=>`<tr><td>${esc(stName(m))}${stockMap[m].unit?' ('+esc(stockMap[m].unit)+')':''}</td><td>${stockMap[m].qty}</td><td style="border-bottom:1px solid #000;width:22mm"></td></tr>`).join('')}`).join('')}</table>
   ${ids.length?'':'<div class="rm">'+(onlyLow?'مفيش نواقص':'المخزون فاضي')+'</div>'}<div class="rm">${ids.length} صنف</div><div class="rm" style="margin-top:8px">اسم الجارد: ____________</div></div>`;
 }
 function viewOpen(){
@@ -894,7 +890,7 @@ document.addEventListener('click',e=>{
   }
   else if(a==='delmenu'){S.menu=S.menu.filter(x=>x.id!==id);}
   else if(a==='dismstk'){stockMsg='';}
-  else if(a==='stin'||a==='stset'||a==='stdel'||a==='stcat'){if(!staff)stockAction(a,id);}
+  else if(a==='stin'||a==='stset'||a==='stdel'){if(!staff)stockAction(a,id);}
   else if(a==='printstock'||a==='printlow'){pHTML=stockHTML(a==='printlow');}
   if(sb)applyStock(sb);
   save();render();
@@ -908,7 +904,7 @@ document.addEventListener('change',e=>{
   const f=t.dataset&&t.dataset.f;if(!f)return;
   if(f==='onote'){opt.note=t.value;return;}
   if(f==='dnote')return;
-  if(f==='stmin'){if(!staff&&dbx&&stockMap[t.dataset.id])dbx.doc('stock/'+t.dataset.id).upd({min:Math.max(0,Math.round(+t.value||0))}).catch(()=>{});return;}
+  if(f==='stmin'){if(!staff&&dbx&&stockMap[t.dataset.id])dbx.doc('stock/'+t.dataset.id).upd({min:Math.max(0,+t.value||0)}).catch(()=>{});return;}
   if(f==='cnote'){if(!permitted(selTable))return;const l=listFor(selTable),it=l&&l.find(x=>x.id===t.dataset.id);if(it){if(t.value.trim())it.note=t.value.trim();else delete it.note;save();}return;}
   if(f==='dur'){pick[t.dataset.id]=t.value==='c'?'c':+t.value;render();return;}
   if(f==='durc'){pickC[t.dataset.id]=Math.max(0,Math.round(+t.value||0));return;}
@@ -938,6 +934,14 @@ document.addEventListener('input',e=>{
   document.getElementById('invdisc').textContent='-'+money(dd);
 });
 document.addEventListener('submit',e=>{
+  if(e.target.id==='stnew'){
+    e.preventDefault();if(staff||!dbx)return;
+    const g=i=>document.getElementById(i).value,name=g('snn').trim();if(!name)return;
+    const q=+g('snq')||0,mn=+g('snm')||0,id='x'+Date.now().toString(36)+Math.random().toString(36).slice(2,4);
+    dbx.doc('stock/'+id).set({qty:q,min:mn,name,unit:g('snu').trim(),cat:g('snc').trim()||'مستلزمات',custom:true}).catch(()=>{stockErr=true;});
+    if(q)stLog(id,'init',q,q);
+    render();return;
+  }
   if(e.target.id==='stform'){
     e.preventDefault();if(staff||!dbx)return;
     const mid=document.getElementById('stitem').value,m=S.menu.find(x=>x.id===mid);if(!m||stockMap[mid])return;

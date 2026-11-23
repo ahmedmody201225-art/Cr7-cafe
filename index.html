@@ -450,7 +450,7 @@ function cafeMain(){
     <div class="items">${list.map(i=>can?`<div class="dl"><div class="it"><span><b>${esc(i.name)}</b></span><span class="q"><button data-a="dec" data-t="${id}" data-id="${i.id}" aria-label="تقليل">−</button><b>${i.qty}</b><button data-a="inc" data-t="${id}" data-id="${i.id}" aria-label="زيادة">+</button><span style="min-width:56px;text-align:end">${money(i.price*i.qty)}</span><button class="btn x s" data-a="cdel" data-id="${i.id}" aria-label="حذف">حذف</button></span></div>
       <div class="opts" style="margin:4px 0 8px"><span class="note">السكر:</span>${['ساده','مظبوط','زيادة'].map(v=>`<button class="chip ${i.sugar===v?'on':''}" data-a="csugar" data-id="${i.id}" data-v="${v}">${v}</button>`).join('')}<input data-f="cnote" data-id="${i.id}" placeholder="ملاحظات" value="${esc(i.note||'')}" aria-label="ملاحظات"></div></div>`
       :`<div class="dl"><div class="it"><span>${i.qty} × <b>${esc(i.name)}</b>${optTxt(i)?`<div class="note">${esc(optTxt(i))}</div>`:''}</span><span>${money(i.price*i.qty)}</span></div></div>`).join('')}</div>
-    ${can?`<form class="form" id="mvform" style="margin-top:10px"><label>نقل الطلب لترابيزة رقم<input id="mvnum" type="number" inputmode="numeric" min="1" required></label><button class="btn" type="submit" style="flex:none">نقل</button></form>`:''}
+    <form class="form" id="mvform" style="margin-top:10px"><label>نقل الطلب لترابيزة رقم<input id="mvnum" type="number" inputmode="numeric" min="1" required></label><button class="btn" type="submit" style="flex:none">نقل</button></form>
     <div class="total"><span>حساب ${esc(name)}</span><span>${money(t)}</span></div>
     <div class="row"><button class="btn" data-a="printorder" data-id="${id}">طباعة الأوردر</button><button class="btn g" data-a="stop" data-id="${id}">تحصيل / طباعة الدفع</button></div>`:'';
   return `<div class="card"><div class="name">${esc(name)} · المنيو</div>
@@ -851,7 +851,7 @@ document.addEventListener('input',e=>{
   document.getElementById('invdisc').textContent='-'+money(dd);
 });
 document.addEventListener('submit',e=>{
-  if(e.target.id==='mvform'){e.preventDefault();if(!permitted(selTable)){denyEdit();return;}const to=tblIdFor(document.getElementById('mvnum').value);if(to&&to!==selTable){moveTable(selTable,to);save();}render();return;}
+  if(e.target.id==='mvform'){e.preventDefault();const to=tblIdFor(document.getElementById('mvnum').value);if(to&&to!==selTable){moveTable(selTable,to);save();}render();return;}
   if(e.target.id==='tform'){e.preventDefault();const tid=tblIdFor(document.getElementById('tnum').value);if(tid){selTable=tid;flash='';}document.activeElement&&document.activeElement.blur&&document.activeElement.blur();render();return;}
   if(e.target.id==='closeform'){
     e.preventDefault();

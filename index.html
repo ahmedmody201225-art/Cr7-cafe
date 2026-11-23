@@ -73,6 +73,12 @@ html[data-theme="dark"] .btn.g{color:#06210f}
 .mi b{color:var(--muted);font-weight:600;font-variant-numeric:tabular-nums}
 .mi:active{background:var(--soft)}
 .cmain .it{flex-wrap:wrap;gap:4px}.cmain .it .q{flex-wrap:wrap}
+.stk{font-size:12px;border-radius:6px;padding:1px 6px;background:var(--soft);font-weight:700}
+.stk.low{background:#ffe08a;color:#6a4b00}.stk.out{background:var(--danger);color:#fff}
+.st{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--line)}
+.stn{flex:1;min-width:120px}.stc{display:flex;gap:6px;flex-wrap:wrap;align-items:center;width:100%}.stc input[data-f=stq]{max-width:90px}
+.sq{font-size:22px;font-weight:800;min-width:46px;text-align:center;border-radius:10px;padding:2px 8px;background:var(--soft)}
+.sq.low{background:#ffe08a;color:#6a4b00}.sq.out{background:var(--danger);color:#fff}
 .dl{border-bottom:1px solid var(--line);margin-bottom:4px}
 .opts input{flex:1;min-width:140px}
 .tpick{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}.tpick label{flex:1;min-width:140px;font-size:17px}.tpick input{font-size:26px;font-weight:700;text-align:center;width:100%}
@@ -157,7 +163,7 @@ h1{color:var(--accent)}
 <div id="receipt" dir="rtl" lang="ar"></div>
 
 <script type="module">
-import {initializeApp,getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut,initializeFirestore,getFirestore,persistentLocalCache,persistentMultipleTabManager,doc,collection,setDoc,deleteDoc,onSnapshot} from "./fb.js";
+import {initializeApp,getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut,initializeFirestore,getFirestore,persistentLocalCache,persistentMultipleTabManager,doc,collection,setDoc,deleteDoc,onSnapshot,updateDoc,increment,query,orderBy,limit} from "./fb.js";
 const firebaseConfig={
   apiKey:"AIzaSyC7IGdB_b2_xbcca0abR7ZlCngJFeupqe4",
   authDomain:"cr7-cafe-8b710.firebaseapp.com",
@@ -308,6 +314,7 @@ function banners(){
   if(staff&&!permErr)h+='<div class="banner">داخل بصلاحية كاشير: الأجهزة والترابيزات وفواتير النهاردة والتقفيل (عرض بدون تعديل).</div>';
   if(permErr)h+='<div class="banner e">الحساب ('+esc((auth.currentUser||{}).email||'')+') مش مسموح له بالبيانات. في Firestore افتح Rules وتأكد إن الإيميل ده مكتوب بالظبط جوه القواعد، واضغط Publish، وبعدين حدّث الصفحة.</div>';
   else if(lastErr)h+='<div class="banner e">تعذر الحفظ في السيستم المشترك. اتأكد من النت، واللي عملته ممكن ما يكونش اتحفظ.</div>';
+  if(stockMsg)h+='<div class="banner e">'+esc(stockMsg)+' <button class="btn s" data-a="dismstk">تمام</button></div>';
   const lg=mode==='db'&&ready()?legacy():null;
   if(lg)h+=`<div class="banner">لقيت بيانات قديمة على الجهاز ده (${(lg.sales||[]).length} عملية). دي من النسخة القديمة اللي كانت بتشتغل على الجهاز بس. <button class="btn s" data-a="migrate">رفع العمليات للسيستم</button> <button class="btn s" data-a="skipmig">تجاهل</button></div>`;
   return h;
@@ -337,7 +344,7 @@ function optBar(){return `<div class="opts"><span class="note">السكر:</span
 function addTo(list,m,sugar,note){
   const key=m.id+((sugar||note)?'~'+(sugar||'')+'~'+(note||''):'');
   const f=list.find(i=>i.id===key);
-  if(f)f.qty++;else{const it={id:key,name:m.name,price:m.price,qty:1};if(sugar)it.sugar=sugar;if(note)it.note=note;list.push(it);}
+  if(f)f.qty++;else{const it={id:key,mid:m.id,name:m.name,price:m.price,qty:1};if(sugar)it.sugar=sugar;if(note)it.note=note;list.push(it);}
 }
 function decFrom(list,id){const f=list.find(i=>i.id===id);if(!f)return;f.qty--;if(f.qty<=0)list.splice(list.indexOf(f),1);}
 
@@ -345,7 +352,7 @@ function menuChips(target,act){act=act||'add';
   const groups={};S.menu.forEach(m=>{const c=m.cat||'أخرى';(groups[c]=groups[c]||[]).push(m);});
   const order=Object.keys(groups).sort((a,b)=>(a==='أخرى')-(b==='أخرى'));
   const one=order.length<2;
-  return order.map(c=>`${one?'':`<div class="note" style="margin:10px 0 4px"><b>${esc(c)}</b></div>`}<div class="chips">${groups[c].map(m=>`<button class="chip" data-a="${act}" data-t="${target}" data-id="${m.id}">${esc(m.name)} <b>${m.price}</b></button>`).join('')}</div>`).join('');}
+  return order.map(c=>`${one?'':`<div class="note" style="margin:10px 0 4px"><b>${esc(c)}</b></div>`}<div class="chips">${groups[c].map(m=>`<button class="chip" data-a="${act}" data-t="${target}" data-id="${m.id}">${esc(m.name)}${stockTag(m)} <b>${m.price}</b></button>`).join('')}</div>`).join('');}
 function itemsList(list,target){
   if(!list.length)return '<div class="note">مفيش طلبات لسه</div>';
   return `<div class="items">${list.map(i=>`<div class="it"><span>${esc(i.name)}${optTxt(i)?`<div class="note">${esc(optTxt(i))}</div>`:''}</span><span class="q"><button data-a="dec" data-t="${target}" data-id="${i.id}" aria-label="تقليل">−</button><b>${i.qty}</b><button data-a="inc" data-t="${target}" data-id="${i.id}" aria-label="زيادة">+</button><span style="min-width:56px;text-align:end">${money(i.price*i.qty)}</span></span></div>`).join('')}</div>`;}
@@ -392,6 +399,80 @@ function openList(){
   if(S.cart.length)ids.unshift('cafe');
   return ids.map(id=>({id,name:tblName(id)}));
 }
+
+/* ---- inventory (stock) ---- */
+let stockMap={},stockLog=[],stockErr=false,stockMsg='';
+function bindStock(){
+  dbx.collection('stock').onSnapshot(q=>{stockErr=false;stockMap={};q.docs.forEach(d=>{stockMap[d.id]=clone(d.data());});softRender();},e=>{stockErr=true;softRender();});
+  if(!staff)dbx.recent('stocklog',40,q=>{stockLog=q.docs.map(d=>Object.assign({id:d.id},clone(d.data())));softRender();},e=>{});
+}
+const midOf=l=>{const m=S.menu.find(x=>x.id===l.mid)||S.menu.find(x=>x.id===String(l.id).split('~')[0])||S.menu.find(x=>x.name===l.name);return m?m.id:null;};
+function openQty(){
+  const q={},add=l=>(l||[]).forEach(i=>{const m=midOf(i);if(m&&stockMap[m])q[m]=(q[m]||0)+i.qty;});
+  Object.values(S.orders).forEach(add);add(S.cart);Object.values(S.active).forEach(se=>add(se.items));return q;
+}
+function stockAdd(mid,d){if(!d)return;if(dbx)dbx.doc('stock/'+mid).inc('qty',d).catch(()=>{});else if(stockMap[mid])stockMap[mid].qty+=d;}
+function applyStock(before){
+  const after=openQty(),low=[];
+  Object.keys(Object.assign({},before,after)).forEach(m=>{
+    const d=(after[m]||0)-(before[m]||0);if(!d||!stockMap[m])return;
+    const s=stockMap[m],left=s.qty-d;stockAdd(m,-d);
+    if(d>0&&left<=(s.min||0))low.push(stName(m)+(left<=0?' خلص':' باقي '+left));
+  });
+  if(low.length)stockMsg='تنبيه مخزون: '+low.join('، ');
+}
+const stName=m=>((S.menu.find(x=>x.id===m)||{}).name)||(stockMap[m]||{}).name||m;
+const stCat=m=>((S.menu.find(x=>x.id===m)||{}).cat)||(stockMap[m]||{}).cat||'أخرى';
+const stCls=s=>s.qty<=0?'out':s.qty<=(s.min||0)?'low':'';
+function stockTag(m){const s=stockMap[m.id];return s?` <small class="stk ${stCls(s)}">${s.qty<=0?'خلص':s.qty}</small>`:'';}
+const lowList=()=>Object.entries(stockMap).filter(([,s])=>s.qty<=(s.min||0));
+function stLog(mid,type,delta,after){
+  if(!dbx)return;
+  dbx.doc('stocklog/l'+Date.now()+Math.random().toString(36).slice(2,6)).set({ts:Date.now(),item:mid,name:stName(mid),type,delta,after,by:((auth.currentUser||{}).email)||''}).catch(()=>{});
+}
+function stockAction(a,id){
+  if(!dbx)return;
+  if(a==='stcat'){
+    const cat=(document.getElementById('stcatsel')||{}).value;if(!cat)return;
+    S.menu.filter(m=>(m.cat||'أخرى')===cat&&!stockMap[m.id]).forEach(m=>dbx.doc('stock/'+m.id).set({qty:0,min:0,name:m.name,cat:m.cat||''}).catch(()=>{}));
+    return;
+  }
+  const s=stockMap[id];if(!s)return;
+  if(a==='stdel'){if(armed==='st'+id){armed=null;dbx.doc('stock/'+id).delete().catch(()=>{});}else armed='st'+id;return;}
+  const inp=document.querySelector('[data-f="stq"][data-id="'+id+'"]'),v=inp?Math.round(+inp.value):NaN;
+  if(isNaN(v)||inp.value==='')return;
+  if(a==='stin'&&v>0){stockAdd(id,v);stLog(id,'in',v,s.qty+v);}
+  else if(a==='stset'&&v>=0){const d=v-s.qty;if(d){stockAdd(id,d);stLog(id,'adj',d,v);}}
+}
+const STTYPE={in:'توريد',adj:'تسوية جرد',init:'رصيد افتتاحي'};
+function viewStock(){
+  if(mode!=='db')return '<div class="empty">المخزون محتاج اتصال بالسيستم المشترك.</div>';
+  const ids=Object.keys(stockMap),cats={};
+  ids.forEach(m=>{const c=stCat(m);(cats[c]=cats[c]||[]).push(m);});
+  const order=Object.keys(cats).sort((a,b)=>(a==='أخرى')-(b==='أخرى'));
+  const out=ids.filter(m=>stockMap[m].qty<=0).length,low=lowList().length-out;
+  const menuCats=[...new Set(S.menu.map(m=>m.cat||'أخرى'))];
+  const free=S.menu.filter(m=>!stockMap[m.id]);
+  const rowH=m=>{const s=stockMap[m];return `<div class="st"><div class="stn"><b>${esc(stName(m))}</b><div class="note">حد أدنى ${s.min||0}</div></div><span class="sq ${stCls(s)}">${s.qty}</span>${staff?'':`<div class="stc"><input data-f="stq" data-id="${m}" type="number" min="0" inputmode="numeric" placeholder="الكمية" aria-label="الكمية"><button class="btn s" data-a="stin" data-id="${m}">+ توريد</button><button class="btn s" data-a="stset" data-id="${m}">جرد = </button><input data-f="stmin" data-id="${m}" type="number" min="0" inputmode="numeric" value="${s.min||0}" title="حد أدنى" aria-label="حد أدنى" style="max-width:64px"><button class="btn x s" data-a="stdel" data-id="${m}">${armed==='st'+m?'تأكيد':'إيقاف'}</button></div>`}</div>`;};
+  return `${stockErr?'<div class="banner e">مش قادر أقرا المخزون. ضيف قواعد stock و stocklog في Firestore واضغط Publish.</div>':''}
+  <div class="stats"><div class="stat main"><span>أصناف في المخزون</span><strong>${ids.length}</strong></div><div class="stat"><span>قرّبت تخلص</span><strong>${low}</strong></div><div class="stat"><span>خلصت</span><strong>${out}</strong></div></div>
+  <div class="row" style="margin:10px 0"><button class="btn p" data-a="printstock">طباعة الجرد</button><button class="btn" data-a="printlow">طباعة النواقص</button></div>
+  ${staff?'':`<h2>إضافة صنف للمخزون</h2>
+  <form class="form" id="stform"><label>الصنف<select id="stitem" required><option value="">اختار…</option>${menuCats.map(c=>`<optgroup label="${esc(c)}">${free.filter(m=>(m.cat||'أخرى')===c).map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</optgroup>`).join('')}</select></label><label>الكمية الحالية<input id="stqty" type="number" min="0" inputmode="numeric" value="0"></label><label>حد التنبيه<input id="stmn" type="number" min="0" inputmode="numeric" value="3"></label><button class="btn p" type="submit">إضافة</button></form>
+  <div class="form" style="margin-top:8px"><label>أو ضيف قسم كامل (بكمية 0)<select id="stcatsel">${menuCats.map(c=>`<option>${esc(c)}</option>`).join('')}</select></label><button class="btn" data-a="stcat">إضافة القسم</button></div>
+  <div class="note">الأصناف اللي بتتضاف هنا بتتخصم لوحدها لما الطلب يتأكد (أو يتضاف على جهاز)، وبترجع لو الصنف اتشال أو اتقلّل.</div>`}
+  ${order.length?order.map(c=>`<h2 style="margin-top:12px">${esc(c)}</h2><div class="card">${cats[c].sort((a,b)=>stName(a).localeCompare(stName(b),'ar')).map(rowH).join('')}</div>`).join(''):'<div class="empty">لسه مفيش أصناف في المخزون'+(staff?'':'. ضيف من فوق.')+'</div>'}
+  ${staff?'':`<h2 style="margin-top:14px">آخر حركات المخزون</h2>
+  ${stockLog.length?`<div class="scroll"><table><thead><tr><th>الوقت</th><th>الصنف</th><th>الحركة</th><th>الكمية</th><th>الرصيد</th></tr></thead><tbody>${stockLog.map(l=>`<tr><td>${new Date(l.ts).toLocaleDateString('ar-EG')} ${timeStr(l.ts)}</td><td>${esc(l.name||'')}</td><td>${STTYPE[l.type]||l.type}</td><td>${l.delta>0?'+':''}${l.delta}</td><td>${l.after}</td></tr>`).join('')}</tbody></table></div>`:'<div class="note">مفيش حركات لسه</div>'}`}`;
+}
+function stockHTML(onlyLow){
+  const ids=Object.keys(stockMap).filter(m=>!onlyLow||stockMap[m].qty<=(stockMap[m].min||0)),cats={};
+  ids.forEach(m=>{const c=stCat(m);(cats[c]=cats[c]||[]).push(m);});
+  const d=new Date(),order=Object.keys(cats).sort((a,b)=>(a==='أخرى')-(b==='أخرى'));
+  return `<div class="rc"><img class="logo" src="${LOGO_MARK}" alt="CR7" style="width:30mm;margin:0 auto 4px"><h2>${onlyLow?'النواقص':'جرد المخزون'}</h2><div class="rm">${d.toLocaleDateString('ar-EG')} · ${timeStr(d.getTime())}</div>
+  <table><tr><td><b>الصنف</b></td><td><b>بالسيستم</b></td><td><b>الفعلي</b></td></tr>${order.map(c=>`<tr><td colspan="3" style="background:#ddd;padding:2px 4px"><b>${esc(c)}</b></td></tr>${cats[c].sort((a,b)=>stName(a).localeCompare(stName(b),'ar')).map(m=>`<tr><td>${esc(stName(m))}</td><td>${stockMap[m].qty}</td><td style="border-bottom:1px solid #000;width:22mm"></td></tr>`).join('')}`).join('')}</table>
+  ${ids.length?'':'<div class="rm">'+(onlyLow?'مفيش نواقص':'المخزون فاضي')+'</div>'}<div class="rm">${ids.length} صنف</div><div class="rm" style="margin-top:8px">اسم الجارد: ____________</div></div>`;
+}
 function viewOpen(){
   const L=openList(),grand=L.reduce((a,x)=>a+tblTotal(x.id),0);
   return `<div class="stats"><div class="stat main"><span>إجمالي الحسابات المفتوحة</span><strong>${money(grand)}</strong></div><div class="stat"><span>ترابيزات مفتوحة</span><strong>${L.length}</strong></div></div>
@@ -414,7 +495,7 @@ function menuCols(target,act,q){
   const nq=norm(q),groups={};
   S.menu.forEach(m=>{const c=m.cat||'أخرى';(groups[c]=groups[c]||[]).push(m);});
   const order=Object.keys(groups).sort((a,b)=>(a==='أخرى')-(b==='أخرى'));
-  const btn=m=>`<button class="mi" data-a="${act}" data-t="${target}" data-id="${m.id}"><span>${esc(m.name)}</span><b>${m.price}</b></button>`;
+  const btn=m=>`<button class="mi" data-a="${act}" data-t="${target}" data-id="${m.id}"><span>${esc(m.name)}${stockTag(m)}</span><b>${m.price}</b></button>`;
   if(nq){
     const hits=S.menu.filter(m=>norm(m.name).includes(nq));
     return hits.length?`<div class="mgrid">${hits.map(btn).join('')}</div>`:'<div class="empty">مفيش مشروب بالاسم ده</div>';
@@ -656,15 +737,15 @@ function viewAlert(){
   <div class="row"><button class="btn" data-a="addlimit" data-id="${id}" data-n="15">+15 د</button><button class="btn" data-a="addlimit" data-id="${id}" data-n="30">+30 د</button><button class="btn" data-a="addlimit" data-id="${id}" data-n="60">+60 د</button></div>
   <div class="row"><button class="btn" data-a="openlimit" data-id="${id}">كمّل مفتوح</button><button class="btn" data-a="ackalert" data-id="${id}">إيقاف التنبيه</button></div></div></div>`;
 }
-const TABS=[['devices','الأجهزة'],['cafe','الطلبات'],['open','الحسابات'],['bills','الفواتير'],['close','التقفيل'],['report','التقرير'],['history','الأيام'],['settings','الإعدادات']];
-const STAFF_TABS=['devices','cafe','open','bills','close'], ADMIN_HIDE=['bills'];
+const TABS=[['devices','الأجهزة'],['cafe','الطلبات'],['open','الحسابات'],['bills','الفواتير'],['close','التقفيل'],['stock','المخزون'],['report','التقرير'],['history','الأيام'],['settings','الإعدادات']];
+const STAFF_TABS=['devices','cafe','open','bills','close','stock'], ADMIN_HIDE=['bills'];
 const tabsFor=()=>TABS.filter(([k])=>staff?STAFF_TABS.includes(k):!ADMIN_HIDE.includes(k));
 function render(){
   if(mode==='auth'){document.getElementById('root').innerHTML=viewLogin();return;}
   if(staff&&!STAFF_TABS.includes(tab))tab='devices';if(!staff&&ADMIN_HIDE.includes(tab))tab='devices';
-  const views={devices:viewDevices,cafe:viewCafe,open:viewOpen,bills:viewBills,close:viewClose,report:viewReport,history:viewHistory,settings:viewSettings};
+  const views={stock:viewStock,devices:viewDevices,cafe:viewCafe,open:viewOpen,bills:viewBills,close:viewClose,report:viewReport,history:viewHistory,settings:viewSettings};
   document.getElementById('root').innerHTML=`<header><span class="brand"><img class="logo" src="${LOGO_MARK}" alt="CR7" style="height:34px;width:auto"><h1>كاشير الكافيه والبلايستيشن</h1></span><span class="hd"><span class="badge" id="status"></span><span class="clock" id="clock"></span><button class="btn s" data-a="logout">خروج</button></span></header>
-  <nav>${tabsFor().map(([k,l])=>`<button data-a="tab" data-id="${k}" aria-current="${tab===k}">${l}${k==='open'&&openList().length?' ('+openList().length+')':''}</button>`).join('')}</nav>
+  <nav>${tabsFor().map(([k,l])=>`<button data-a="tab" data-id="${k}" aria-current="${tab===k}">${l}${k==='open'&&openList().length?' ('+openList().length+')':''}${k==='stock'&&lowList().length?' ⚠'+lowList().length:''}</button>`).join('')}</nav>
   ${banners()}
   <main>${permErr?'<div class="empty">السيستم مقفول لحد ما قواعد Firestore تتظبط. بعد ما تظبطها حدّث الصفحة.</div>':(ready()||slow)?views[tab]():'<div class="empty">جاري تحميل البيانات…</div>'}</main>${viewInvoice()}${viewAlert()}`;
   const mc=document.getElementById('mcols');if(mc)mc.scrollLeft=mcolsLeft;
@@ -699,6 +780,7 @@ function listFor(t){
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-a]');if(!b)return;
   const a=b.dataset.a,id=b.dataset.id,now=Date.now();let toPrint=null;
+  const sb=(Object.keys(stockMap).length&&a!=='pay'&&a!=='payprint'&&a!=='migrate')?openQty():null;
   if(a!=='del'&&a!=='discard'&&a!=='delclose'&&a!=='importmenu')armed=null;
   if(a==='tab'){tab=id;cflash='';flash='';}
   else if(a==='start'){
@@ -788,7 +870,7 @@ document.addEventListener('click',e=>{
     if(d.length){
       const l=listFor(id);
       d.forEach(n=>{const ex=l.find(x=>x.name===n.name&&x.price===n.price&&(x.sugar||'')===(n.sugar||'')&&(x.note||'')===(n.note||''));
-        if(ex)ex.qty+=n.qty;else{const it={id:'l'+uid(),name:n.name,price:n.price,qty:n.qty};if(n.sugar)it.sugar=n.sugar;if(n.note)it.note=n.note;l.push(it);}});
+        if(ex)ex.qty+=n.qty;else{const it={id:'l'+uid(),mid:n.mid,name:n.name,price:n.price,qty:n.qty};if(n.sugar)it.sugar=n.sugar;if(n.note)it.note=n.note;l.push(it);}});
       pHTML=orderHTML(tblName(id),d);
       drafts[id]=[];
       flash='اتبعت للحسابات واتطبع الأوردر ✓';
@@ -811,6 +893,10 @@ document.addEventListener('click',e=>{
     S.menu=cr7Items();
   }
   else if(a==='delmenu'){S.menu=S.menu.filter(x=>x.id!==id);}
+  else if(a==='dismstk'){stockMsg='';}
+  else if(a==='stin'||a==='stset'||a==='stdel'||a==='stcat'){if(!staff)stockAction(a,id);}
+  else if(a==='printstock'||a==='printlow'){pHTML=stockHTML(a==='printlow');}
+  if(sb)applyStock(sb);
   save();render();
   if(toPrint)printReceipt(toPrint);
   if(pHTML){const h=pHTML;pHTML=null;printHTML(h);}
@@ -822,6 +908,7 @@ document.addEventListener('change',e=>{
   const f=t.dataset&&t.dataset.f;if(!f)return;
   if(f==='onote'){opt.note=t.value;return;}
   if(f==='dnote')return;
+  if(f==='stmin'){if(!staff&&dbx&&stockMap[t.dataset.id])dbx.doc('stock/'+t.dataset.id).upd({min:Math.max(0,Math.round(+t.value||0))}).catch(()=>{});return;}
   if(f==='cnote'){if(!permitted(selTable))return;const l=listFor(selTable),it=l&&l.find(x=>x.id===t.dataset.id);if(it){if(t.value.trim())it.note=t.value.trim();else delete it.note;save();}return;}
   if(f==='dur'){pick[t.dataset.id]=t.value==='c'?'c':+t.value;render();return;}
   if(f==='durc'){pickC[t.dataset.id]=Math.max(0,Math.round(+t.value||0));return;}
@@ -851,6 +938,14 @@ document.addEventListener('input',e=>{
   document.getElementById('invdisc').textContent='-'+money(dd);
 });
 document.addEventListener('submit',e=>{
+  if(e.target.id==='stform'){
+    e.preventDefault();if(staff||!dbx)return;
+    const mid=document.getElementById('stitem').value,m=S.menu.find(x=>x.id===mid);if(!m||stockMap[mid])return;
+    const q=Math.round(+document.getElementById('stqty').value||0),mn=Math.round(+document.getElementById('stmn').value||0);
+    dbx.doc('stock/'+mid).set({qty:q,min:mn,name:m.name,cat:m.cat||''}).catch(()=>{stockErr=true;});
+    if(q)stLog(mid,'init',q,q);
+    render();return;
+  }
   if(e.target.id==='mvform'){e.preventDefault();const to=tblIdFor(document.getElementById('mvnum').value);if(to&&to!==selTable){moveTable(selTable,to);save();}render();return;}
   if(e.target.id==='tform'){e.preventDefault();const tid=tblIdFor(document.getElementById('tnum').value);if(tid){selTable=tid;flash='';}document.activeElement&&document.activeElement.blur&&document.activeElement.blur();render();return;}
   if(e.target.id==='closeform'){
@@ -903,7 +998,8 @@ function printReceipt(s){
   setTimeout(()=>window.print(),80);
 }
 function makeDb(){return{
-  doc:p=>({set:b=>setDoc(doc(fs,p),b),delete:()=>deleteDoc(doc(fs,p))}),
+  doc:p=>({set:b=>setDoc(doc(fs,p),b),delete:()=>deleteDoc(doc(fs,p)),inc:(f,n)=>updateDoc(doc(fs,p),{[f]:increment(n)}),upd:o=>updateDoc(doc(fs,p),o)}),
+  recent:(k,n,next,err)=>onSnapshot(query(collection(fs,k),orderBy('ts','desc'),limit(n)),snap=>next({docs:snap.docs.map(d=>({id:d.id,data:()=>d.data()}))}),err),
   collection:k=>({onSnapshot:(next,err)=>onSnapshot(collection(fs,k),snap=>next({docs:snap.docs.map(d=>({id:d.id,data:()=>d.data()})),metadata:snap.metadata}),err)})
 };}
 function viewLogin(){return `<div class="card" style="max-width:380px;margin:8vh auto 0"><img class="logo" src="${LOGO}" alt="CR7" style="width:150px;margin:0 auto"><h1 style="text-align:center">كاشير الكافيه</h1><div class="note">سجّل دخول عشان تفتح السيستم.</div>
@@ -919,7 +1015,7 @@ function doLogin(){
 let signedIn=false;
 onAuthStateChanged(auth,user=>{
   if(user){
-    staff=!ADMIN_EMAILS.includes(String(user.email||'').toLowerCase());signedIn=true;dbx=makeDb();mode='db';bind();bindClosings();bindPermits();render();
+    staff=!ADMIN_EMAILS.includes(String(user.email||'').toLowerCase());signedIn=true;dbx=makeDb();mode='db';bind();bindClosings();bindPermits();bindStock();render();
     setTimeout(()=>{if(!ready()){slow=true;render();}},10000);
   }else{
     if(signedIn){location.reload();return;}

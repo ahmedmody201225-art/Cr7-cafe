@@ -232,7 +232,7 @@ const ready=()=>mode==='local'||(mode==='db'&&COLS.every(k=>loaded[k]));
 function desired(){
   const m={};
   if(loaded.cfg)m['cfg/main']=cfgOf(S);
-  if(loaded.active)Object.entries(S.active).forEach(([id,se])=>{m['active/'+id]={segs:se.segs,items:se.items,limit:se.limit||0,ack:!!se.ack};});
+  if(loaded.active)Object.entries(S.active).forEach(([id,se])=>{m['active/'+id]={segs:se.segs,items:se.items,limit:se.limit||0,ack:!!se.ack,fixed:se.fixed||0};});
   if(loaded.orders){
     Object.entries(S.orders).forEach(([id,l])=>{if(l&&l.length)m['orders/'+id]={items:l};});
     if(S.cart.length)m['orders/cafe']={items:S.cart};
@@ -264,7 +264,7 @@ function applyRemote(k,docs){
   docs.forEach(d=>{remote[k+'/'+d.id]=canon(d.data());});
   const data=d=>clone(d.data());
   if(k==='cfg'){const d=docs.find(x=>x.id==='main');if(d){const o=data(d);['rateS','rateD','devices','tables','menu'].forEach(f=>{if(o[f]!==undefined)S[f]=o[f];});}}
-  else if(k==='active'){S.active={};docs.forEach(d=>{const o=data(d);if(o.segs&&o.segs.length)S.active[d.id]={segs:o.segs,items:o.items||[],limit:o.limit||0,ack:!!o.ack};});}
+  else if(k==='active'){S.active={};docs.forEach(d=>{const o=data(d);if(o.segs&&o.segs.length)S.active[d.id]={segs:o.segs,items:o.items||[],limit:o.limit||0,ack:!!o.ack,fixed:o.fixed||0};});}
   else if(k==='orders'){S.orders={};S.cart=[];docs.forEach(d=>{const items=data(d).items||[];if(d.id==='cafe')S.cart=items;else S.orders[d.id]=items;});}
   else if(k==='sales'){S.sales=docs.map(d=>Object.assign({id:d.id},data(d))).sort((a,b)=>a.ts-b.ts);}
   else if(k==='expenses'){S.expenses=docs.map(d=>Object.assign({id:d.id},data(d))).sort((a,b)=>a.ts-b.ts);}
@@ -333,8 +333,8 @@ function doMigrate(){
 
 let tab='devices', selTable='t1', inv=null, reportDay=dayKey(Date.now()), armed=null, copyText=null;
 const rate=m=>m==='S'?S.rateS:S.rateD;
-const elapsed=(se,now)=>se.segs.reduce((a,g)=>a+((g.to||now)-g.from),0);
-const timeCost=(se,now)=>se.segs.reduce((a,g)=>a+((g.to||now)-g.from)/3600000*rate(g.mode),0);
+const elapsed=(se,now)=>se.fixed?0:se.segs.reduce((a,g)=>a+((g.to||now)-g.from),0);
+const timeCost=(se,now)=>se.fixed?se.fixed:se.segs.reduce((a,g)=>a+((g.to||now)-g.from)/3600000*rate(g.mode),0);
 const itemsTotal=l=>l.reduce((a,i)=>a+i.price*i.qty,0);
 const curMode=se=>se.segs[se.segs.length-1].mode;
 
@@ -367,8 +367,14 @@ function deviceCard(d){
     return `<div class="card"><div class="top"><span class="name">${esc(d.name)}</span><span class="badge">فاضي</span></div>
     <label>مدة اللعب<select data-f="dur" data-id="${d.id}">${DURS.map(([v,l])=>`<option value="${v}" ${String(dv)===String(v)?'selected':''}>${l}</option>`).join('')}</select></label>
     ${dv==='c'?`<label>عدد الدقائق<input type="number" min="1" inputmode="numeric" data-f="durc" data-id="${d.id}" value="${pickC[d.id]||''}"></label>`:''}
-    <div class="row"><button class="btn p" data-a="start" data-id="${d.id}" data-m="S">فردي · ${S.rateS}/ساعة</button><button class="btn p" data-a="start" data-id="${d.id}" data-m="D">زوجي · ${S.rateD}/ساعة</button></div></div>`;
+    <div class="row"><button class="btn p" data-a="start" data-id="${d.id}" data-m="S">فردي · ${S.rateS}/ساعة</button><button class="btn p" data-a="start" data-id="${d.id}" data-m="D">زوجي · ${S.rateD}/ساعة</button></div>
+    <div class="row"><button class="btn s" data-a="start" data-id="${d.id}" data-fx="10">ماتش 10</button><button class="btn s" data-a="start" data-id="${d.id}" data-fx="15">ماتش 15</button></div></div>`;
   }
+  if(se.fixed)return `<div class="card on"><div class="top"><span class="name">${esc(d.name)}</span><span class="badge on">ماتش ${se.fixed} · شغال</span></div>
+    <div class="sub"><span>سعر الماتش (بدون وقت)</span><span>${money(se.fixed)}</span></div>
+    ${itemsList(se.items,d.id)}
+    <details ${devOpen[d.id]?'open':''} data-dopen="${d.id}"><summary class="note" style="cursor:pointer">إضافة طلب من المنيو</summary><div style="margin-top:8px">${optBar()}${menuChips(d.id)}</div></details>
+    <button class="btn g" data-a="stop" data-id="${d.id}">إنهاء وحساب</button></div>`;
   const m=curMode(se), lim=se.limit||0, e=elapsed(se,now), rem=lim*60000-e, over=lim>0&&rem<0;
   const tTxt=lim>0?(rem>=0?hms(rem):'+'+hms(-rem)):hms(e);
   const lbl=lim>0?(over?'زيادة عن الوقت':'متبقي من '+lim+' د'):'وقت اللعب';
@@ -591,7 +597,7 @@ function viewReport(){
   <div class="row" style="margin-top:10px"><button class="btn s" data-a="copy">نسخ الملخص</button></div>
   <div id="copybox"></div>
   <h2>العمليات</h2>
-  ${sales.length?`<div class="scroll"><table><thead><tr><th>الوقت</th><th>البند</th><th>المدة</th><th>الإجمالي</th><th></th></tr></thead><tbody>${sales.slice().reverse().map(s=>`<tr><td>${timeStr(s.ts)}</td><td>${s.type==='ps'?esc(s.dev):'كافيه'+(s.dev&&s.dev!=='كافيه'?' · '+esc(s.dev):'')}${s.items.length?`<div class="note">${s.items.map(i=>esc(i.name)+'×'+i.qty).join('، ')}</div>`:''}</td><td>${s.type==='ps'?Math.round(s.mins)+' د':'—'}</td><td>${money(s.timeCost+itemsTotal(s.items)-(s.disc||0))}${s.disc?`<div class="note">خصم ${Math.round(s.disc)}</div>`:''}</td><td style="white-space:nowrap"><button class="btn s" data-a="printsale" data-id="${s.id}">طباعة</button> ${del('s',s.id)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">مفيش عمليات في اليوم ده</div>'}
+  ${sales.length?`<div class="scroll"><table><thead><tr><th>الوقت</th><th>البند</th><th>المدة</th><th>الإجمالي</th><th></th></tr></thead><tbody>${sales.slice().reverse().map(s=>`<tr><td>${timeStr(s.ts)}</td><td>${s.type==='ps'?esc(s.dev):'كافيه'+(s.dev&&s.dev!=='كافيه'?' · '+esc(s.dev):'')}${s.items.length?`<div class="note">${s.items.map(i=>esc(i.name)+'×'+i.qty).join('، ')}</div>`:''}</td><td>${s.type==='ps'?(s.mins?Math.round(s.mins)+' د':'ماتش'):'—'}</td><td>${money(s.timeCost+itemsTotal(s.items)-(s.disc||0))}${s.disc?`<div class="note">خصم ${Math.round(s.disc)}</div>`:''}</td><td style="white-space:nowrap"><button class="btn s" data-a="printsale" data-id="${s.id}">طباعة</button> ${del('s',s.id)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">مفيش عمليات في اليوم ده</div>'}
   <h2>المصروفات</h2>
   <div class="note">إضافة المصروفات بقت من صفحة «التقفيل».</div>
   ${exps.length?`<div class="scroll" style="margin-top:10px"><table><tbody>${exps.map(e=>`<tr><td>${esc(e.name)}</td><td>${money(e.amount)}</td><td style="text-align:end">${del('e',e.id)}</td></tr>`).join('')}</tbody></table></div>`:''}`;}
@@ -621,7 +627,7 @@ function viewInvoice(){
   const rows=inv.items.map(i=>`<tr><td>${esc(i.name)} × ${i.qty}</td><td>${money(i.price*i.qty)}</td></tr>`).join('');
   const dd=invDisc();
   return `<div class="overlay"><div class="modal" role="dialog" aria-label="الفاتورة"><div class="name">فاتورة ${esc(inv.dev)}</div>
-  <table class="bill"><tbody>${inv.type==='ps'?`<tr><td>وقت اللعب (${hms(inv.ms)})</td><td>${money(inv.timeCost)}</td></tr>`:''}${rows}<tr id="invdiscrow" ${dd>0?'':'hidden'}><td>خصم</td><td id="invdisc">-${money(dd)}</td></tr></tbody></table>
+  <table class="bill"><tbody>${inv.type==='ps'?`<tr><td>${inv.fixed?'ماتش':'وقت اللعب ('+hms(inv.ms)+')'}</td><td>${money(inv.timeCost)}</td></tr>`:''}${rows}<tr id="invdiscrow" ${dd>0?'':'hidden'}><td>خصم</td><td id="invdisc">-${money(dd)}</td></tr></tbody></table>
   <div class="form"><label>خصم<input id="dval" type="number" min="0" step="any" inputmode="decimal" value="${inv.dval||''}"></label><label>النوع<select id="dtype"><option value="amt" ${inv.dtype==='pct'?'':'selected'}>جنيه</option><option value="pct" ${inv.dtype==='pct'?'selected':''}>نسبة %</option></select></label></div>
   <div class="total"><span>الإجمالي</span><span id="invtot">${money(invSub()-dd)}</span></div>
   <div class="row"><button class="btn g" data-a="pay">تم الدفع</button><button class="btn g" data-a="payprint">دفع وطباعة</button></div>
@@ -635,7 +641,7 @@ function viewBills(){
   return `<div class="note" style="margin-bottom:10px">فواتير الوردية الحالية · من ${timeStr(from)} ${wdName(dayKey(from))} (عرض وطباعة فقط). بعد التقفيل بتتصفّر.</div>
   <div class="stats"><div class="stat main"><span>إجمالي الوردية</span><strong>${money(tot)}</strong></div><div class="stat"><span>عدد الفواتير</span><strong>${sales.length}</strong></div></div>
   <h2>الفواتير</h2>
-  ${sales.length?`<div class="scroll"><table><thead><tr><th>الوقت</th><th>البند</th><th>المدة</th><th>الإجمالي</th><th></th></tr></thead><tbody>${sales.slice().reverse().map(x=>`<tr><td>${timeStr(x.ts)}</td><td>${x.type==='ps'?esc(x.dev):'كافيه'+(x.dev&&x.dev!=='كافيه'?' · '+esc(x.dev):'')}${x.items.length?`<div class="note">${x.items.map(i=>esc(i.name)+'×'+i.qty).join('، ')}</div>`:''}</td><td>${x.type==='ps'?Math.round(x.mins)+' د':'—'}</td><td>${money(x.timeCost+itemsTotal(x.items)-(x.disc||0))}${x.disc?`<div class="note">خصم ${Math.round(x.disc)}</div>`:''}</td><td><button class="btn s" data-a="printsale" data-id="${x.id}">طباعة</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">مفيش فواتير في الوردية دي لسه</div>'}`;
+  ${sales.length?`<div class="scroll"><table><thead><tr><th>الوقت</th><th>البند</th><th>المدة</th><th>الإجمالي</th><th></th></tr></thead><tbody>${sales.slice().reverse().map(x=>`<tr><td>${timeStr(x.ts)}</td><td>${x.type==='ps'?esc(x.dev):'كافيه'+(x.dev&&x.dev!=='كافيه'?' · '+esc(x.dev):'')}${x.items.length?`<div class="note">${x.items.map(i=>esc(i.name)+'×'+i.qty).join('، ')}</div>`:''}</td><td>${x.type==='ps'?(x.mins?Math.round(x.mins)+' د':'ماتش'):'—'}</td><td>${money(x.timeCost+itemsTotal(x.items)-(x.disc||0))}${x.disc?`<div class="note">خصم ${Math.round(x.disc)}</div>`:''}</td><td><button class="btn s" data-a="printsale" data-id="${x.id}">طباعة</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">مفيش فواتير في الوردية دي لسه</div>'}`;
 }
 
 /* ---- daily close ---- */
@@ -781,8 +787,9 @@ document.addEventListener('click',e=>{
   if(a==='tab'){tab=id;cflash='';flash='';}
   else if(a==='start'){
     const dv=pick[id]===undefined?0:pick[id];const lim=dv==='c'?(pickC[id]||0):(+dv||0);
-    S.active[id]={segs:[{mode:b.dataset.m,from:now}],items:[],limit:lim,ack:false};
-    delete pick[id];delete pickC[id];if(lim>0)askNotify();
+    const fx=+b.dataset.fx||0;
+    S.active[id]={segs:[{mode:b.dataset.m||'S',from:now}],items:[],limit:fx?0:lim,ack:false,fixed:fx};
+    delete pick[id];delete pickC[id];if(lim>0&&!fx)askNotify();
   }
   else if(a==='addlimit'){const se=S.active[id];if(se){const n=+b.dataset.n,em=Math.ceil(elapsed(se,now)/60000);se.limit=(se.limit>0&&em<=se.limit)?se.limit+n:em+n;se.ack=false;}}
   else if(a==='openlimit'){const se=S.active[id];if(se){se.limit=0;se.ack=false;}}
@@ -800,7 +807,7 @@ document.addEventListener('click',e=>{
   else if(a==='stop'){
     if(id==='cafe'||id[0]==='t')inv={type:'cafe',dev:tblName(id),id,ms:0,mins:0,timeCost:0,items:listFor(id).map(i=>({...i}))};
     else{const se=S.active[id],d=S.devices.find(x=>x.id===id);const ms=elapsed(se,now);
-      inv={type:'ps',dev:d?d.name:id,id,ms,mins:ms/60000,timeCost:Math.round(timeCost(se,now)),items:se.items.map(i=>({...i}))};}
+      inv={type:'ps',fixed:se.fixed||0,dev:d?d.name:id,id,ms,mins:ms/60000,timeCost:Math.round(timeCost(se,now)),items:se.items.map(i=>({...i}))};}
   }
   else if(a==='back'){inv=null;}
   else if(a==='printinv'){toPrint={id:'',ts:now,type:inv.type,dev:inv.dev,mins:inv.mins,timeCost:inv.timeCost,items:inv.items,disc:invDisc()};}
@@ -979,7 +986,7 @@ function receiptHTML(s){
   const tot=s.timeCost+itemsTotal(s.items)-(s.disc||0),d=new Date(s.ts);
   const dc=s.disc>0?`<tr><td>خصم</td><td>-${Math.round(s.disc)}</td></tr>`:'';
   const rows=s.items.map(i=>`<tr><td>${esc(i.name)} × ${i.qty}</td><td>${Math.round(i.price*i.qty)}</td></tr>`).join('');
-  const ps=s.type==='ps'?`<tr><td>وقت اللعب (${Math.round(s.mins)} د)</td><td>${Math.round(s.timeCost)}</td></tr>`:'';
+  const ps=s.type==='ps'?`<tr><td>${s.mins?'وقت اللعب ('+Math.round(s.mins)+' د)':'ماتش'}</td><td>${Math.round(s.timeCost)}</td></tr>`:'';
   return `<div class="rc"><img class="logo" src="${LOGO_MARK}" alt="CR7" style="width:30mm;margin:0 auto 4px"><div class="rm">${d.toLocaleDateString('ar-EG')} · ${timeStr(s.ts)}</div><div class="rm">${esc(s.dev)}${s.id?' · #'+esc(String(s.id).slice(0,5)):''}</div><table>${ps}${rows}${dc}</table><div class="rt"><span>الإجمالي</span><span>${Math.round(tot)} ج.م</span></div><div class="rm">شكرًا لزيارتكم</div></div>`;
 }
 function closeReceiptHTML(c){

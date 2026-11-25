@@ -368,9 +368,10 @@ function deviceCard(d){
     <label>مدة اللعب<select data-f="dur" data-id="${d.id}">${DURS.map(([v,l])=>`<option value="${v}" ${String(dv)===String(v)?'selected':''}>${l}</option>`).join('')}</select></label>
     ${dv==='c'?`<label>عدد الدقائق<input type="number" min="1" inputmode="numeric" data-f="durc" data-id="${d.id}" value="${pickC[d.id]||''}"></label>`:''}
     <div class="row"><button class="btn p" data-a="start" data-id="${d.id}" data-m="S">فردي · ${S.rateS}/ساعة</button><button class="btn p" data-a="start" data-id="${d.id}" data-m="D">زوجي · ${S.rateD}/ساعة</button></div>
-    <div class="row"><button class="btn s" data-a="start" data-id="${d.id}" data-fx="10">ماتش 10</button><button class="btn s" data-a="start" data-id="${d.id}" data-fx="15">ماتش 15</button></div></div>`;
+    <div class="row"><button class="btn p" style="padding:16px 8px;font-size:17px" data-a="start" data-id="${d.id}" data-m="S" data-fx="10">فردي · ماتش 10</button><button class="btn p" style="padding:16px 8px;font-size:17px" data-a="start" data-id="${d.id}" data-m="S" data-fx="15">فردي · ماتش 15</button></div>
+    <div class="row"><button class="btn p" style="padding:16px 8px;font-size:17px" data-a="start" data-id="${d.id}" data-m="D" data-fx="10">زوجي · ماتش 10</button><button class="btn p" style="padding:16px 8px;font-size:17px" data-a="start" data-id="${d.id}" data-m="D" data-fx="15">زوجي · ماتش 15</button></div></div>`;
   }
-  if(se.fixed)return `<div class="card on"><div class="top"><span class="name">${esc(d.name)}</span><span class="badge on">ماتش ${se.fixed} · شغال</span></div>
+  if(se.fixed)return `<div class="card on"><div class="top"><span class="name">${esc(d.name)}</span><span class="badge on">ماتش ${se.fixed} · ${se.segs[0].mode==='D'?'زوجي':'فردي'}</span></div>
     <div class="sub"><span>سعر الماتش (بدون وقت)</span><span>${money(se.fixed)}</span></div>
     ${itemsList(se.items,d.id)}
     <details ${devOpen[d.id]?'open':''} data-dopen="${d.id}"><summary class="note" style="cursor:pointer">إضافة طلب من المنيو</summary><div style="margin-top:8px">${optBar()}${menuChips(d.id)}</div></details>
